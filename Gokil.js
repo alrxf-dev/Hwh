@@ -1,4 +1,4 @@
-/* GFS AI Solver PRO v2.2 — dengan CORS Proxy */
+/* GFS AI Solver PRO v2.3 — DeepSeek added */
 (function () {
   if (window.__GFS_LOADED__) {
     document.getElementById('gfs-panel')?.remove();
@@ -8,7 +8,7 @@
   window.__GFS_LOADED__ = true;
 
   const state = {
-    provider: 'xrina',
+    provider: 'gemini',
     mode: 'balanced',
     proxy: 'allorigins',
     running: false,
@@ -30,6 +30,7 @@
     xrina: ['Gemini AI'],
     gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash', 'gemini-1.5-flash'],
     groq: ['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
+    deepseek: ['deepseek-chat', 'deepseek-reasoner'],
     openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo']
   };
 
@@ -112,7 +113,7 @@
   panel.id = 'gfs-panel';
   panel.innerHTML = `
     <div class="gfs-hdr" id="gfs-hdr">
-      <div class="gfs-hdr-title"><span class="gfs-dot"></span><span>GFS AI Solver <span style="opacity:.7;font-weight:400">PRO v2.2</span></span></div>
+      <div class="gfs-hdr-title"><span class="gfs-dot"></span><span>GFS AI Solver <span style="opacity:.7;font-weight:400">PRO v2.3</span></span></div>
       <div class="gfs-hdr-btns"><button id="gfs-min">−</button><button id="gfs-close">×</button></div>
     </div>
     <div class="gfs-tabs">
@@ -151,26 +152,25 @@
         <div class="gfs-row">
           <label class="gfs-lbl">Provider</label>
           <select class="gfs-select" id="gfs-provider">
-            <option value="xrina">Xrina (FREE - no key)</option>
             <option value="gemini">Google Gemini</option>
+            <option value="deepseek">DeepSeek</option>
             <option value="groq">Groq</option>
             <option value="openai">OpenAI</option>
+            <option value="xrina">Xrina (FREE - no key)</option>
           </select>
-          <div id="gfs-free-tag" class="gfs-free">GRATIS · NO API KEY</div>
         </div>
         <div class="gfs-row">
-          <label class="gfs-lbl">CORS Proxy (untuk Xrina)</label>
+          <label class="gfs-lbl">CORS Proxy (khusus Xrina)</label>
           <select class="gfs-select" id="gfs-proxy">
-            <option value="allorigins">AllOrigins (recommended)</option>
+            <option value="allorigins">AllOrigins</option>
             <option value="codetabs">CodeTabs</option>
             <option value="corsproxy">corsproxy.io</option>
             <option value="thingproxy">thingproxy</option>
             <option value="none">None (direct)</option>
           </select>
-          <div class="gfs-proxy-hint">Kalau Xrina 400/blocked, coba proxy lain.</div>
         </div>
         <div class="gfs-row"><label class="gfs-lbl">Model</label><select class="gfs-select" id="gfs-model"></select></div>
-        <div class="gfs-row" id="gfs-key-row" style="display:none">
+        <div class="gfs-row" id="gfs-key-row">
           <label class="gfs-lbl">API Key</label>
           <div class="gfs-input-group">
             <input class="gfs-input" id="gfs-key" type="password" placeholder="Paste API key" autocomplete="off" />
@@ -204,10 +204,10 @@
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-export">📋 EXPORT</button>
           <button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clearlog">🗑 CLEAR</button>
         </div>
-        <div class="gfs-log" id="gfs-log"><div>Ready. Provider: Xrina + AllOrigins proxy.</div></div>
+        <div class="gfs-log" id="gfs-log"><div>Ready. v2.3 aktif.</div></div>
       </div>
     </div>
-    <div class="gfs-footer"><span>GFS PRO v2.2</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
+    <div class="gfs-footer"><span>GFS PRO v2.3</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
   document.body.appendChild(panel);
 
   const $ = (id) => document.getElementById(id);
@@ -259,13 +259,10 @@
     });
     state.provider = p;
     $('gfs-key-row').style.display = (p === 'xrina') ? 'none' : 'block';
-    $('gfs-free-tag').style.display = (p === 'xrina') ? 'inline-block' : 'none';
   };
   $('gfs-provider').onchange = updateModels;
-  updateModels();
 
   $('gfs-proxy').onchange = (e) => { state.proxy = e.target.value; };
-
   $('gfs-conf').oninput = (e) => { $('gfs-conf-val').textContent = e.target.value + '%'; };
   $('gfs-delay').oninput = (e) => { $('gfs-delay-val').textContent = e.target.value; };
 
@@ -374,21 +371,19 @@
     log('Cleared ' + cleared + ' jawaban.', 'warn');
   };
 
-  // ─── Provider callers ───
+  // ─── Callers ───
   const callXrina = async (apiKey, model, prompt) => {
     const rawUrl = XRINA_ENDPOINT + encodeURIComponent(prompt);
     const proxyFn = PROXIES[state.proxy] || PROXIES.allorigins;
     const url = proxyFn(rawUrl);
-    log('Xrina URL: ' + url.slice(0, 100) + '...', 'info');
     const res = await fetch(url, { method: 'GET' });
     if (!res.ok) throw new Error('Xrina HTTP ' + res.status);
     const body = await res.text();
     let data;
-    try { data = JSON.parse(body); }
-    catch { throw new Error('Xrina non-JSON: ' + body.slice(0, 100)); }
-    if (!data.status) throw new Error('Xrina status=false: ' + JSON.stringify(data).slice(0, 100));
+    try { data = JSON.parse(body); } catch { throw new Error('Xrina non-JSON: ' + body.slice(0, 100)); }
+    if (!data.status) throw new Error('Xrina status=false');
     const text = data?.data?.response;
-    if (typeof text !== 'string' || !text.trim()) throw new Error('Xrina empty response');
+    if (typeof text !== 'string' || !text.trim()) throw new Error('Xrina empty');
     return text;
   };
 
@@ -399,9 +394,27 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } }),
     });
-    if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
+    if (!res.ok) throw new Error('Gemini HTTP ' + res.status + ': ' + (await res.text()).slice(0, 120));
     const data = await res.json();
     return data.candidates[0].content.parts[0].text;
+  };
+
+  const callDeepSeek = async (apiKey, model, prompt) => {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model, temperature: 0.2,
+        messages: [
+          { role: 'system', content: 'Answer MCQ. Output valid JSON object with "answers" array. No markdown.' },
+          { role: 'user', content: prompt },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!res.ok) throw new Error('DeepSeek HTTP ' + res.status + ': ' + (await res.text()).slice(0, 120));
+    const data = await res.json();
+    return data.choices[0].message.content;
   };
 
   const callOpenAI = async (apiKey, model, prompt) => {
@@ -477,13 +490,13 @@
     prog.classList.add('active');
     progFill.style.width = '0%';
 
-    log('[' + provider + '/' + state.proxy + '] Parse ' + questions.length + ' soal.', 'info');
+    log('[' + provider + '] Parse ' + questions.length + ' soal.', 'info');
 
     const prompt =
       'Kamu asisten ujian. Jawab pertanyaan pilihan ganda berikut.\n' +
       'BALAS HANYA dengan JSON object tanpa markdown:\n' +
       '{"answers":[{"idx":0,"answer":"<teks opsi PERSIS>","confidence":0.9}]}\n\n' +
-      'Aturan:\n- Single: 1 jawaban\n- Multi (checkbox): 1-2 jawaban\n- "answer" PERSIS sama dengan opsi\n- "confidence" 0-1\n\n' +
+      'Aturan:\n- Single: 1 jawaban\n- Multi: 1-2 jawaban\n- "answer" PERSIS sama dengan opsi\n- "confidence" 0-1\n\n' +
       'PERTANYAAN:\n' +
       questions.map((q, i) => '[Q' + i + '] (' + q.type + ') ' + q.qText + '\nOPSI:\n' + q.opts.map((o) => '  - ' + o.text).join('\n')).join('\n\n');
 
@@ -496,6 +509,7 @@
           log('Request ' + provider + ' (attempt ' + attempt + '/' + maxAttempts + ')...', 'info');
           if (provider === 'xrina') raw = await callXrina(key, model, prompt);
           else if (provider === 'gemini') raw = await callGemini(key, model, prompt);
+          else if (provider === 'deepseek') raw = await callDeepSeek(key, model, prompt);
           else if (provider === 'groq') raw = await callGroq(key, model, prompt);
           else raw = await callOpenAI(key, model, prompt);
           break;
@@ -563,11 +577,12 @@
 
   try {
     const c = JSON.parse(localStorage.getItem('gfs_config') || '{}');
-    if (c.provider) { $('gfs-provider').value = c.provider; updateModels(); }
+    if (c.provider) { $('gfs-provider').value = c.provider; }
     if (c.model) $('gfs-model').value = c.model;
     if (c.key) $('gfs-key').value = c.key;
     if (c.proxy) { $('gfs-proxy').value = c.proxy; state.proxy = c.proxy; }
   } catch (e) {}
+  updateModels();
 
-  log('GFS PRO v2.2 aktif. Xrina + AllOrigins proxy ready.', 'ok');
+  log('GFS PRO v2.3 aktif. Providers: Gemini, DeepSeek, Groq, OpenAI, Xrina.', 'ok');
 })();
