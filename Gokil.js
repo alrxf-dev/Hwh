@@ -1,13 +1,14 @@
-/* GFS AI Solver PRO v3 — Groq default, GUI enhanced */
+/* GFS AI Solver PRO v4 — with Explanation + Stealth Mode */
 (function () {
-  if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); window.__GFS_LOADED__ = false; return; }
+  if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); document.getElementById('gfs-stealth-btn')?.remove(); window.__GFS_LOADED__ = false; return; }
   window.__GFS_LOADED__ = true;
 
   const HARDCODED_KEYS = {
     groq: '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'
   };
 
-  const state = { running: false };
+  const state = { running: false, stealth: false, explanations: [] };
+
   const PROXIES = {
     allorigins: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
     codetabs: (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
@@ -21,14 +22,14 @@
   };
 
   const CSS = `
-  #gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;max-width:94vw;background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);color:#e2e8f0;border:1px solid #1e293b;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.85),0 0 0 1px rgba(99,102,241,.2);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden;animation:gfsIn .3s cubic-bezier(.4,0,.2,1)}
+  #gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;max-width:94vw;background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);color:#e2e8f0;border:1px solid #1e293b;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.85),0 0 0 1px rgba(99,102,241,.2);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden;animation:gfsIn .3s cubic-bezier(.4,0,.2,1)}
   @keyframes gfsIn{from{opacity:0;transform:translate(-50%,-50%) scale(.92)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
   @keyframes gfsPulse{0%,100%{opacity:1}50%{opacity:.4}}
   @keyframes gfsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes gfsFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
   #gfs-panel *{box-sizing:border-box}
   #gfs-panel::-webkit-scrollbar{width:6px}
   #gfs-panel::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
-  #gfs-panel::-webkit-scrollbar-track{background:transparent}
 
   .gfs-hdr{padding:14px 16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);border-bottom:1px solid rgba(255,255,255,.1);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;color:#fff;position:relative;overflow:hidden;flex-shrink:0}
   .gfs-hdr::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 0%,rgba(255,255,255,.25),transparent 55%);pointer-events:none}
@@ -41,12 +42,11 @@
   .gfs-hdr button:hover{background:rgba(255,255,255,.35);transform:scale(1.08)}
 
   .gfs-tabs{display:flex;background:#0b1220;border-bottom:1px solid #1e293b;padding:4px 6px 0;flex-shrink:0}
-  .gfs-tab{flex:1;padding:10px 8px;background:none;border:none;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.6px;transition:all .15s;border-radius:6px 6px 0 0}
-  .gfs-tab:hover{color:#94a3b8;background:rgba(148,163,184,.05)}
+  .gfs-tab{flex:1;padding:10px 6px;background:none;border:none;color:#64748b;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.5px;transition:all .15s;border-radius:6px 6px 0 0}
   .gfs-tab.active{color:#a5b4fc;border-bottom-color:#6366f1;background:rgba(99,102,241,.08)}
 
   .gfs-body{padding:16px;overflow-y:auto;flex:1;min-height:0}
-  .gfs-tab-panel{display:none;animation:gfsIn .25s}
+  .gfs-tab-panel{display:none;animation:gfsFade .25s}
   .gfs-tab-panel.active{display:block}
 
   .gfs-row{margin-bottom:12px}
@@ -54,7 +54,7 @@
   .gfs-hint{font-size:9.5px;color:#475569;text-transform:none;letter-spacing:0;font-weight:400;float:right;margin-top:1px}
 
   .gfs-input,.gfs-select{width:100%;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none;transition:all .15s}
-  .gfs-input:focus,.gfs-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18);background:#0f172a}
+  .gfs-input:focus,.gfs-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
   .gfs-input::placeholder{color:#475569}
   .gfs-select{cursor:pointer}
 
@@ -66,21 +66,23 @@
   .gfs-btn{width:100%;padding:12px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px}
   .gfs-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(99,102,241,.4),inset 0 1px 0 rgba(255,255,255,.2)}
   .gfs-btn-main:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 26px rgba(99,102,241,.55)}
-  .gfs-btn-main:active:not(:disabled){transform:translateY(0)}
-  .gfs-btn-main:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  .gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}
   .gfs-btn-sec{background:#1e293b;color:#cbd5e1;border:1px solid #334155}
-  .gfs-btn-sec:hover{background:#334155;color:#e2e8f0;border-color:#475569}
+  .gfs-btn-sec:hover{background:#334155;color:#e2e8f0}
   .gfs-btn-danger{background:rgba(69,10,10,.6);color:#fca5a5;border:1px solid #7f1d1d}
   .gfs-btn-danger:hover{background:#7f1d1d}
+  .gfs-btn-stealth{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;border:1px solid #334155}
+  .gfs-btn-stealth:hover{color:#e2e8f0}
   .gfs-btn-sm{padding:8px 12px;font-size:11.5px}
   .gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .gfs-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 
   .gfs-progress{height:5px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:10px;display:none}
   .gfs-progress.active{display:block}
-  .gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7);transition:width .3s ease;width:0%;border-radius:3px}
+  .gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7);transition:width .3s ease;width:0%}
 
-  .gfs-score{margin-top:14px;padding:16px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:12px;border-left:4px solid #6366f1;display:none;box-shadow:0 4px 20px rgba(0,0,0,.3)}
-  .gfs-score.active{display:block;animation:gfsIn .35s}
+  .gfs-score{margin-top:14px;padding:16px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:12px;border-left:4px solid #6366f1;display:none}
+  .gfs-score.active{display:block;animation:gfsFade .35s}
   .gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;font-weight:700}
   .gfs-score-v{font-size:34px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px}
   .gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px;line-height:1.5}
@@ -91,8 +93,6 @@
   .gfs-log .err{color:#f87171}
   .gfs-log .info{color:#60a5fa}
   .gfs-log .warn{color:#fbbf24}
-  .gfs-log::-webkit-scrollbar{width:5px}
-  .gfs-log::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
 
   .gfs-footer{padding:10px 16px;background:#0a0f1c;border-top:1px solid #1e293b;font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
   .gfs-badge{padding:3px 8px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:600}
@@ -100,13 +100,52 @@
   .gfs-badge.error{background:#450a0a;color:#fca5a5}
   .gfs-badge.done{background:#14532d;color:#86efac}
 
-  .gfs-tip{font-size:10px;color:#64748b;margin-top:6px;line-height:1.5;padding:8px 10px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:0 6px 6px 0}
+  .gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;line-height:1.5;padding:10px 12px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:0 6px 6px 0}
   .gfs-tip b{color:#a5b4fc}
+
+  .gfs-expl{margin-top:14px;display:none}
+  .gfs-expl.active{display:block;animation:gfsFade .35s}
+  .gfs-expl-h{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+  .gfs-expl-list{max-height:340px;overflow-y:auto;background:#020617;border:1px solid #1e293b;border-radius:10px;padding:10px}
+  .gfs-expl-item{padding:10px;margin-bottom:8px;background:rgba(30,41,59,.5);border-radius:8px;border-left:3px solid #6366f1}
+  .gfs-expl-item.correct{border-left-color:#22c55e}
+  .gfs-expl-item.wrong{border-left-color:#ef4444}
+  .gfs-expl-num{font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px;text-transform:uppercase}
+  .gfs-expl-ans{font-size:11.5px;color:#86efac;font-weight:600;margin-bottom:4px}
+  .gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.55}
+  .gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:4px}
+
+  .gfs-toggle{position:relative;display:inline-block;width:36px;height:20px}
+  .gfs-toggle input{opacity:0;width:0;height:0}
+  .gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:20px}
+  .gfs-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+  input:checked + .gfs-slider{background:#6366f1}
+  input:checked + .gfs-slider:before{transform:translateX(16px)}
+
+  #gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,.5);z-index:2147483646;transition:all .2s;font-weight:700}
+  #gfs-stealth-btn:hover{transform:scale(1.1)}
+  #gfs-stealth-btn.active{display:flex}
+
+  .gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;margin-bottom:8px}
+  .gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:600}
+  .gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px;font-weight:400}
   `;
 
   const styleEl = document.createElement('style');
   styleEl.textContent = CSS;
   document.head.appendChild(styleEl);
+
+  // Stealth floating button
+  const stealthBtn = document.createElement('div');
+  stealthBtn.id = 'gfs-stealth-btn';
+  stealthBtn.innerHTML = '⚡';
+  stealthBtn.title = 'Show GFS Panel';
+  stealthBtn.onclick = () => {
+    state.stealth = false;
+    panel.style.display = 'flex';
+    stealthBtn.classList.remove('active');
+  };
+  document.body.appendChild(stealthBtn);
 
   const panel = document.createElement('div');
   panel.id = 'gfs-panel';
@@ -119,23 +158,26 @@
       </div>
       <div class="gfs-hdr-btns">
         <button id="gfs-min" title="Minimize">−</button>
+        <button id="gfs-stealth" title="Stealth Mode">👻</button>
         <button id="gfs-close" title="Close">×</button>
       </div>
     </div>
     <div class="gfs-tabs">
       <button class="gfs-tab active" data-tab="solve">Solve</button>
+      <button class="gfs-tab" data-tab="explain">Explain</button>
       <button class="gfs-tab" data-tab="settings">Settings</button>
       <button class="gfs-tab" data-tab="log">Log</button>
     </div>
     <div class="gfs-body" id="gfs-body">
       <div class="gfs-tab-panel active" data-panel="solve">
-        <div class="gfs-tip" id="gfs-tip">Provider: <b>Groq</b> · Model: <b>openai/gpt-oss-120b</b> · Key: <b>auto-loaded</b></div>
+        <div class="gfs-tip" id="gfs-tip">Provider: <b>Groq</b> · Model: <b>openai/gpt-oss-120b</b></div>
         <div class="gfs-row" style="margin-top:12px">
           <button class="gfs-btn gfs-btn-main" id="gfs-solve">NYELESAIN SOAL</button>
         </div>
         <div class="gfs-progress" id="gfs-progress"><div class="gfs-progress-fill" id="gfs-progress-fill"></div></div>
-        <div class="gfs-row-2" style="margin-top:12px">
-          <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-parse">CEK SOAL</button>
+        <div class="gfs-row-3" style="margin-top:12px">
+          <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-parse">CEK</button>
+          <button class="gfs-btn gfs-btn-stealth gfs-btn-sm" id="gfs-expl-toggle">PENJELASAN</button>
           <button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clear">CLEAR</button>
         </div>
         <div class="gfs-score" id="gfs-score">
@@ -144,12 +186,25 @@
           <div class="gfs-score-d" id="gfs-score-d"></div>
         </div>
       </div>
+
+      <div class="gfs-tab-panel" data-panel="explain">
+        <div class="gfs-expl active" id="gfs-expl">
+          <div class="gfs-expl-h">
+            <span>Penjelasan Jawaban</span>
+            <span class="gfs-badge" id="gfs-expl-count">0</span>
+          </div>
+          <div class="gfs-expl-list" id="gfs-expl-list">
+            <div style="color:#64748b;font-size:11px;text-align:center;padding:20px">Belum ada penjelasan. Klik NYELESAIN SOAL dulu.</div>
+          </div>
+        </div>
+      </div>
+
       <div class="gfs-tab-panel" data-panel="settings">
         <div class="gfs-row">
           <label class="gfs-lbl">Provider</label>
           <select class="gfs-select" id="gfs-provider">
             <option value="groq">Groq (recommended)</option>
-            <option value="openrouter">OpenRouter (free models)</option>
+            <option value="openrouter">OpenRouter (free)</option>
             <option value="openai">OpenAI</option>
             <option value="xrina">Xrina (no key)</option>
           </select>
@@ -173,11 +228,43 @@
             <button class="gfs-eye" id="gfs-eye" type="button">👁</button>
           </div>
         </div>
+        <div class="gfs-row">
+          <label class="gfs-lbl">Opsi</label>
+          <div class="gfs-switch-row">
+            <div>
+              <div class="gfs-switch-lbl">Auto-Scroll</div>
+              <div class="gfs-switch-desc">Scroll ke soal saat dijawab</div>
+            </div>
+            <label class="gfs-toggle"><input type="checkbox" id="gfs-opt-scroll" checked><span class="gfs-slider"></span></label>
+          </div>
+          <div class="gfs-switch-row">
+            <div>
+              <div class="gfs-switch-lbl">Auto-Explanation</div>
+              <div class="gfs-switch-desc">Minta AI jelasin jawaban</div>
+            </div>
+            <label class="gfs-toggle"><input type="checkbox" id="gfs-opt-explain"><span class="gfs-slider"></span></label>
+          </div>
+          <div class="gfs-switch-row">
+            <div>
+              <div class="gfs-switch-lbl">Auto-Submit</div>
+              <div class="gfs-switch-desc">Kirim otomatis setelah selesai</div>
+            </div>
+            <label class="gfs-toggle"><input type="checkbox" id="gfs-opt-submit"><span class="gfs-slider"></span></label>
+          </div>
+          <div class="gfs-switch-row">
+            <div>
+              <div class="gfs-switch-lbl">Hide Panel Otomatis</div>
+              <div class="gfs-switch-desc">Auto stealth setelah selesai</div>
+            </div>
+            <label class="gfs-toggle"><input type="checkbox" id="gfs-opt-autostealth"><span class="gfs-slider"></span></label>
+          </div>
+        </div>
         <div class="gfs-row-2">
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-save">💾 SAVE</button>
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-load">📁 LOAD</button>
         </div>
       </div>
+
       <div class="gfs-tab-panel" data-panel="log">
         <div class="gfs-row-2">
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-export">📋 EXPORT</button>
@@ -187,7 +274,7 @@
       </div>
     </div>
     <div class="gfs-footer">
-      <span>GFS PRO v3</span>
+      <span>GFS PRO v4</span>
       <span class="gfs-badge" id="gfs-footer-stat">idle</span>
     </div>`;
   document.body.appendChild(panel);
@@ -221,6 +308,15 @@
     else if (txt === 'error') b.classList.add('error');
     else if (txt === 'done') b.classList.add('done');
   };
+
+  // ─── STEALTH MODE ───
+  const enterStealth = () => {
+    state.stealth = true;
+    panel.style.display = 'none';
+    stealthBtn.classList.add('active');
+  };
+  $('gfs-stealth').onclick = enterStealth;
+  $('gfs-close').onclick = () => { panel.remove(); stealthBtn.remove(); window.__GFS_LOADED__ = false; };
 
   $('gfs-eye').onclick = () => {
     const inp = $('gfs-key');
@@ -257,7 +353,14 @@
   };
 
   $('gfs-save').onclick = () => {
-    localStorage.setItem('gfs_config', JSON.stringify({ provider: $('gfs-provider').value, model: $('gfs-model').value, key: $('gfs-key').value, proxy: $('gfs-proxy').value }));
+    localStorage.setItem('gfs_config', JSON.stringify({
+      provider: $('gfs-provider').value, model: $('gfs-model').value,
+      key: $('gfs-key').value, proxy: $('gfs-proxy').value,
+      optScroll: $('gfs-opt-scroll').checked,
+      optExplain: $('gfs-opt-explain').checked,
+      optSubmit: $('gfs-opt-submit').checked,
+      optAutoStealth: $('gfs-opt-autostealth').checked
+    }));
     log('Config saved.', 'ok');
   };
   $('gfs-load').onclick = () => {
@@ -267,6 +370,10 @@
       if (c.model) $('gfs-model').value = c.model;
       if (c.key && !HARDCODED_KEYS[$('gfs-provider').value]) $('gfs-key').value = c.key;
       if (c.proxy) $('gfs-proxy').value = c.proxy;
+      if (c.optScroll !== undefined) $('gfs-opt-scroll').checked = c.optScroll;
+      if (c.optExplain !== undefined) $('gfs-opt-explain').checked = c.optExplain;
+      if (c.optSubmit !== undefined) $('gfs-opt-submit').checked = c.optSubmit;
+      if (c.optAutoStealth !== undefined) $('gfs-opt-autostealth').checked = c.optAutoStealth;
       log('Config loaded.', 'ok');
     } catch (e) { log('Load gagal', 'err'); }
   };
@@ -289,8 +396,8 @@
     f.style.display = h ? '' : 'none';
     $('gfs-min').textContent = h ? '−' : '+';
   };
-  $('gfs-close').onclick = () => { panel.remove(); window.__GFS_LOADED__ = false; };
 
+  // Drag
   const hdr = $('gfs-hdr');
   let drag = false, ox = 0, oy = 0;
   const startDrag = (x, y) => { const r = panel.getBoundingClientRect(); drag = true; ox = x - r.left; oy = y - r.top; panel.style.transform = 'none'; panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px'; };
@@ -302,6 +409,7 @@
   document.onmouseup = () => { drag = false; };
   document.ontouchend = () => { drag = false; };
 
+  // Parse
   const parseQuestions = () => {
     const groups = document.querySelectorAll('div[role="radiogroup"]');
     const questions = [];
@@ -325,12 +433,21 @@
     log('Ditemukan ' + q.length + ' soal.', 'ok');
     q.slice(0, 5).forEach((item, i) => log('Q' + (i + 1) + ': ' + (item.qText || '').slice(0, 70), 'info'));
   };
+
   $('gfs-clear').onclick = () => {
     let c = 0;
     document.querySelectorAll('div[role="radio"][aria-checked="true"]').forEach((el) => { el.click(); c++; });
     log('Cleared ' + c + ' jawaban.', 'warn');
   };
 
+  $('gfs-expl-toggle').onclick = () => {
+    document.querySelectorAll('.gfs-tab').forEach((t) => t.classList.remove('active'));
+    document.querySelectorAll('.gfs-tab-panel').forEach((p) => p.classList.remove('active'));
+    document.querySelector('.gfs-tab[data-tab="explain"]').classList.add('active');
+    document.querySelector('.gfs-tab-panel[data-panel="explain"]').classList.add('active');
+  };
+
+  // AI callers
   const callGroq = async (key, model, prompt) => {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -387,11 +504,61 @@
     const list = Array.isArray(data) ? data : (data.answers || []);
     if (!Array.isArray(list)) throw new Error('Format salah');
     return list.filter(x => x && (Number.isInteger(x.idx) || Number.isInteger(x.i)) && typeof (x.answer || x.a) === 'string')
-      .map(x => ({ idx: Number.isInteger(x.idx) ? x.idx : x.i, answer: x.answer || x.a, confidence: Math.min(1, Math.max(0, Number(x.confidence) || 0.8)) }));
+      .map(x => ({
+        idx: Number.isInteger(x.idx) ? x.idx : x.i,
+        answer: x.answer || x.a,
+        confidence: Math.min(1, Math.max(0, Number(x.confidence) || 0.8)),
+        reason: x.reason || x.explanation || ''
+      }));
   };
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // Render explanations
+  const renderExplanations = (answers, questions) => {
+    const list = $('gfs-expl-list');
+    list.innerHTML = '';
+    $('gfs-expl-count').textContent = answers.length;
+    answers.forEach((a, i) => {
+      const q = questions[a.idx];
+      if (!q) return;
+      const item = document.createElement('div');
+      item.className = 'gfs-expl-item correct';
+      item.innerHTML = `
+        <div class="gfs-expl-num">Q${a.idx + 1}</div>
+        <div class="gfs-expl-ans">✓ ${a.answer}</div>
+        <div class="gfs-expl-reason">${a.reason || q.qText.slice(0, 100) || 'AI memilih opsi ini berdasarkan analisis konteks.'}</div>
+        <div class="gfs-expl-conf">Confidence: ${(a.confidence * 100).toFixed(0)}%</div>`;
+      list.appendChild(item);
+    });
+  };
+
+  // Auto-scroll option
+  const shouldScroll = () => $('gfs-opt-scroll').checked;
+  const shouldExplain = () => $('gfs-opt-explain').checked;
+  const shouldSubmit = () => $('gfs-opt-submit').checked;
+  const shouldAutoStealth = () => $('gfs-opt-autostealth').checked;
+
+  // Auto-submit
+  const autoSubmit = async () => {
+    await sleep(600);
+    // Find submit button
+    const buttons = document.querySelectorAll('div[role="button"], button');
+    for (const b of buttons) {
+      const txt = (b.innerText || '').toLowerCase();
+      if (txt.includes('kirim') || txt.includes('submit') || txt.includes('send')) {
+        b.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await sleep(400);
+        b.click();
+        log('Auto-submit dikirim.', 'warn');
+        return true;
+      }
+    }
+    log('Tombol submit nggak ketemu.', 'warn');
+    return false;
+  };
+
+  // Main solve
   $('gfs-solve').onclick = async () => {
     if (state.running) return;
     const key = $('gfs-key').value.trim();
@@ -403,15 +570,17 @@
     if (!questions.length) return log('Nggak ada soal.', 'err');
 
     state.running = true;
+    state.explanations = [];
     setStatus('running');
     $('gfs-status').classList.add('busy');
     const btn = $('gfs-solve');
     btn.disabled = true;
     btn.textContent = '⏳ PROCESSING...';
     $('gfs-progress').classList.add('active');
-    log('Parse ' + questions.length + ' soal → ' + provider + ' (' + model + ')', 'info');
+    log('Parse ' + questions.length + ' soal → ' + provider, 'info');
 
-    const prompt = 'Jawab soal pilihan ganda berikut. Balas HANYA JSON object:\n{"answers":[{"idx":0,"answer":"<teks opsi PERSIS>","confidence":0.9}]}\n\n' +
+    const wantExplain = shouldExplain();
+    const prompt = 'Jawab soal pilihan ganda berikut.' + (wantExplain ? ' Sertakan alasan singkat.' : '') + '\nBalas HANYA JSON object:\n{"answers":[{"idx":0,"answer":"<teks opsi PERSIS>","confidence":0.9' + (wantExplain ? ',"reason":"<alasan singkat 1-2 kalimat>"' : '') + '}]}\n\n' +
       questions.map((q, i) => '[' + i + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
 
     try {
@@ -435,17 +604,21 @@
                        q.opts.find(o => o.text.toLowerCase() === a.answer.toLowerCase()) ||
                        q.opts.find(o => o.text.includes(a.answer) || a.answer.includes(o.text));
         if (target) {
-          target.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (shouldScroll()) target.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           await sleep(100);
           target.el.click();
           clicked++;
           totalConf += a.confidence;
-          log('Q' + a.idx + ' ✓', 'ok');
+          log('Q' + a.idx + ' ✓ ' + a.answer.slice(0, 40), 'ok');
         } else {
-          log('Q' + a.idx + ' ✗ no match', 'err');
+          log('Q' + a.idx + ' ✗ no match: ' + a.answer.slice(0, 40), 'err');
         }
         await sleep(180);
       }
+
+      // Save explanations
+      state.explanations = answers;
+      renderExplanations(answers, questions);
 
       const avg = clicked > 0 ? totalConf / clicked : 0;
       const pct = Math.round(avg * 100);
@@ -455,6 +628,20 @@
       $('gfs-score-d').textContent = 'Terisi: ' + clicked + '/' + questions.length + ' soal';
       setStatus('done');
       log('SELESAI: ' + clicked + '/' + questions.length, 'ok');
+
+      // Auto-submit
+      if (shouldSubmit()) {
+        log('Auto-submit aktif, tunggu 2 detik...', 'warn');
+        await sleep(2000);
+        await autoSubmit();
+      }
+
+      // Auto stealth
+      if (shouldAutoStealth()) {
+        await sleep(800);
+        enterStealth();
+        log('Panel hidden (stealth).', 'info');
+      }
     } catch (e) {
       log('ERROR: ' + e.message, 'err');
       setStatus('error');
@@ -467,7 +654,26 @@
     }
   };
 
+  // Keyboard shortcut
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'G') {
+      e.preventDefault();
+      if (state.stealth) { panel.style.display = 'flex'; stealthBtn.classList.remove('active'); state.stealth = false; }
+      else enterStealth();
+    }
+  });
+
   $('gfs-provider').value = 'groq';
   updateModels();
-  log('GFS v3 aktif. Groq auto-loaded.', 'ok');
+
+  try {
+    const c = JSON.parse(localStorage.getItem('gfs_config') || '{}');
+    if (c.optScroll !== undefined) $('gfs-opt-scroll').checked = c.optScroll;
+    if (c.optExplain !== undefined) $('gfs-opt-explain').checked = c.optExplain;
+    if (c.optSubmit !== undefined) $('gfs-opt-submit').checked = c.optSubmit;
+    if (c.optAutoStealth !== undefined) $('gfs-opt-autostealth').checked = c.optAutoStealth;
+  } catch (e) {}
+
+  log('GFS v4 aktif. Fitur: explain, stealth, auto-submit.', 'ok');
+  log('Shortcut: Ctrl+Shift+G buat toggle stealth.', 'info');
 })();
