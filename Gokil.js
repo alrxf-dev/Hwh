@@ -1,29 +1,41 @@
-/* GFS AI Solver PRO v10 — by Alip Lab */
+/* GFS AI Solver PRO v13 — by Alip Lab */
 (function () {
   if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); document.getElementById('gfs-stealth-btn')?.remove(); window.__GFS_LOADED__ = false; return; }
   window.__GFS_LOADED__ = true;
 
+  const CF_ACCOUNT_ID = '7f83137df22c15f252e1da2ee2214a6c';
+  const CF_API_TOKEN = 'cfut_2WkAuydB6WzZXAzdSIGz3kI5AxyEQVDOqllfGshz3568c7ff';
+
   const HARDCODED_KEYS = {
     groq: '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',
     openrouter: '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',
-    anabot: 'freeApikey'
+    cloudflare: CF_API_TOKEN
   };
+
+  const PERSONALITY = {
+    groq: '[Persona: Groq Llama — AI super cepat buatan Groq dengan chip LPU kustom. Latency rendah, akurasi tinggi. Fokus: jawab soal pilihan ganda dengan cepat dan tepat. Tidak basa-basi, langsung ke inti.]',
+    openrouter: '[Persona: OpenRouter Aggregator — gateway ke berbagai model AI. Profesional, teliti, paham konteks akademik. Fokus: pilih jawaban paling akurat berdasarkan konteks soal.]',
+    cloudflare: '[Persona: Cloudflare Workers AI — edge AI global yang berjalan di 300+ data center. Terdistribusi, cepat, efisien. Fokus: analisis soal pilihan ganda secara presisi dengan output JSON bersih.]',
+    openai: '[Persona: OpenAI GPT-4o — asisten multimodal cerdas dan teliti. Fokus: pahami konteks soal secara mendalam sebelum menjawab. Prioritaskan akurasi di atas kecepatan.]'
+  };
+
   const state = { running: false, stealth: false };
-  const BATCH_SIZE = { groq: 6, openrouter: 6, openai: 6, andisearch: 4, ayesoul: 4 };
+  const BATCH_SIZE = { groq: 6, openrouter: 6, openai: 6, cloudflare: 6 };
 
   const MODELS = {
-    groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
-    openrouter: [
-      'nvidia/nemotron-3-ultra-550b-a55b:free',
-      'nvidia/nemotron-3-super-120b-a12b:free',
-      'nvidia/nemotron-3.5-lightning:free'
+    groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
+    openrouter: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-super-120b-a12b:free'],
+    cloudflare: [
+      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+      '@cf/meta/llama-3.1-8b-instruct',
+      '@cf/mistral/mistral-7b-instruct-v0.1',
+      '@cf/meta/llama-3.2-3b-instruct',
+      '@cf/meta/llama-3.2-1b-instruct'
     ],
-    openai: ['gpt-4o-mini', 'gpt-4o'],
-    andisearch: ['AndiSearch'],
-    ayesoul: ['Ayesoul']
+    openai: ['gpt-4o-mini', 'gpt-4o']
   };
 
-  const CSS = `#gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;max-width:94vw;background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);color:#e2e8f0;border:1px solid #1e293b;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.85);z-index:2147483647;font-family:-apple-system,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden}@keyframes gfsPulse{0%,100%{opacity:1}50%{opacity:.4}}@keyframes gfsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes gfsFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}#gfs-panel *{box-sizing:border-box}#gfs-panel::-webkit-scrollbar{width:6px}#gfs-panel::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.gfs-hdr{padding:14px 16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}.gfs-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none}.gfs-logo{width:26px;height:26px;background:rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}.gfs-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:gfsPulse 2s infinite}.gfs-status.busy{background:#facc15;animation:gfsSpin 1s linear infinite}.gfs-hdr-btns{display:flex;gap:6px}.gfs-hdr button{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:600}.gfs-tabs{display:flex;background:#0b1220;border-bottom:1px solid #1e293b;padding:4px 6px 0;flex-shrink:0}.gfs-tab{flex:1;padding:10px 6px;background:none;border:none;color:#64748b;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;text-transform:uppercase;transition:all .15s;border-radius:6px 6px 0 0}.gfs-tab.active{color:#a5b4fc;border-bottom-color:#6366f1;background:rgba(99,102,241,.08)}.gfs-body{padding:16px;overflow-y:auto;flex:1;min-height:0}.gfs-tab-panel{display:none;animation:gfsFade .25s}.gfs-tab-panel.active{display:block}.gfs-row{margin-bottom:12px}.gfs-lbl{display:block;font-size:10px;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;font-weight:700;letter-spacing:.6px}.gfs-hint{font-size:9.5px;color:#475569;text-transform:none;float:right}.gfs-input,.gfs-select{width:100%;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none}.gfs-input:focus,.gfs-select:focus{border-color:#6366f1}.gfs-input-wrap{position:relative}.gfs-input-wrap .gfs-input{padding-right:44px}.gfs-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:6px 10px;font-size:14px}.gfs-btn{width:100%;padding:12px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}.gfs-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(99,102,241,.4)}.gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}.gfs-btn-sec{background:#1e293b;color:#cbd5e1;border:1px solid #334155}.gfs-btn-danger{background:rgba(69,10,10,.6);color:#fca5a5;border:1px solid #7f1d1d}.gfs-btn-stealth{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;border:1px solid #334155}.gfs-btn-sm{padding:8px 12px;font-size:11.5px}.gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gfs-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.gfs-progress{height:5px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:10px;display:none}.gfs-progress.active{display:block}.gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .3s;width:0%}.gfs-score{margin-top:14px;padding:16px;background:rgba(30,41,59,.9);border-radius:12px;border-left:4px solid #6366f1;display:none}.gfs-score.active{display:block}.gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;font-weight:700}.gfs-score-v{font-size:34px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px}.gfs-log{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px;font-family:monospace;font-size:10.5px;height:280px;overflow-y:auto;color:#94a3b8;line-height:1.65}.gfs-log div{margin-bottom:2px;word-break:break-word}.gfs-log .ok{color:#4ade80}.gfs-log .err{color:#f87171}.gfs-log .info{color:#60a5fa}.gfs-log .warn{color:#fbbf24}.gfs-footer{padding:10px 16px;background:#0a0f1c;border-top:1px solid #1e293b;font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;flex-shrink:0}.gfs-badge{padding:3px 8px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:600}.gfs-badge.busy{background:#78350f;color:#fbbf24}.gfs-badge.error{background:#450a0a;color:#fca5a5}.gfs-badge.done{background:#14532d;color:#86efac}.gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:10px 12px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:0 6px 6px 0}.gfs-tip b{color:#a5b4fc}.gfs-expl-list{max-height:340px;overflow-y:auto;background:#020617;border:1px solid #1e293b;border-radius:10px;padding:10px}.gfs-expl-item{padding:10px;margin-bottom:8px;background:rgba(30,41,59,.5);border-radius:8px;border-left:3px solid #6366f1}.gfs-expl-num{font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px;text-transform:uppercase}.gfs-expl-ans{font-size:11.5px;color:#86efac;font-weight:600;margin-bottom:4px}.gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.55}.gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:4px}.gfs-toggle{position:relative;display:inline-block;width:36px;height:20px}.gfs-toggle input{opacity:0;width:0;height:0}.gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:20px}.gfs-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}input:checked + .gfs-slider{background:#6366f1}input:checked + .gfs-slider:before{transform:translateX(16px)}#gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,.5);z-index:2147483646;font-weight:700}#gfs-stealth-btn.active{display:flex}.gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;margin-bottom:8px}.gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:600}.gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}`;
+  const CSS = `#gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;max-width:94vw;background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);color:#e2e8f0;border:1px solid #1e293b;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.85);z-index:2147483647;font-family:-apple-system,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden}@keyframes gfsPulse{0%,100%{opacity:1}50%{opacity:.4}}@keyframes gfsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes gfsFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}#gfs-panel *{box-sizing:border-box}#gfs-panel::-webkit-scrollbar{width:6px}#gfs-panel::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.gfs-hdr{padding:14px 16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}.gfs-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none}.gfs-logo{width:26px;height:26px;background:rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}.gfs-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:gfsPulse 2s infinite}.gfs-status.busy{background:#facc15;animation:gfsSpin 1s linear infinite}.gfs-hdr-btns{display:flex;gap:6px}.gfs-hdr button{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:600}.gfs-tabs{display:flex;background:#0b1220;border-bottom:1px solid #1e293b;padding:4px 6px 0;flex-shrink:0}.gfs-tab{flex:1;padding:10px 6px;background:none;border:none;color:#64748b;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;text-transform:uppercase;transition:all .15s;border-radius:6px 6px 0 0}.gfs-tab.active{color:#a5b4fc;border-bottom-color:#6366f1;background:rgba(99,102,241,.08)}.gfs-body{padding:16px;overflow-y:auto;flex:1;min-height:0}.gfs-tab-panel{display:none;animation:gfsFade .25s}.gfs-tab-panel.active{display:block}.gfs-row{margin-bottom:12px}.gfs-lbl{display:block;font-size:10px;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;font-weight:700;letter-spacing:.6px}.gfs-hint{font-size:9.5px;color:#475569;text-transform:none;float:right}.gfs-input,.gfs-select{width:100%;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none}.gfs-input:focus,.gfs-select:focus{border-color:#6366f1}.gfs-input-wrap{position:relative}.gfs-input-wrap .gfs-input{padding-right:44px}.gfs-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:6px 10px;font-size:14px}.gfs-btn{width:100%;padding:12px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}.gfs-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(99,102,241,.4)}.gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}.gfs-btn-sec{background:#1e293b;color:#cbd5e1;border:1px solid #334155}.gfs-btn-danger{background:rgba(69,10,10,.6);color:#fca5a5;border:1px solid #7f1d1d}.gfs-btn-stealth{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;border:1px solid #334155}.gfs-btn-sm{padding:8px 12px;font-size:11.5px}.gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gfs-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.gfs-progress{height:5px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:10px;display:none}.gfs-progress.active{display:block}.gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .3s;width:0%}.gfs-score{margin-top:14px;padding:16px;background:rgba(30,41,59,.9);border-radius:12px;border-left:4px solid #6366f1;display:none}.gfs-score.active{display:block}.gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;font-weight:700}.gfs-score-v{font-size:34px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px}.gfs-log{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px;font-family:monospace;font-size:10.5px;height:280px;overflow-y:auto;color:#94a3b8;line-height:1.65}.gfs-log div{margin-bottom:2px;word-break:break-word}.gfs-log .ok{color:#4ade80}.gfs-log .err{color:#f87171}.gfs-log .info{color:#60a5fa}.gfs-log .warn{color:#fbbf24}.gfs-log .ai{color:#c4b5fd}.gfs-footer{padding:10px 16px;background:#0a0f1c;border-top:1px solid #1e293b;font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;flex-shrink:0}.gfs-badge{padding:3px 8px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:600}.gfs-badge.busy{background:#78350f;color:#fbbf24}.gfs-badge.error{background:#450a0a;color:#fca5a5}.gfs-badge.done{background:#14532d;color:#86efac}.gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:10px 12px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:0 6px 6px 0}.gfs-expl-list{max-height:340px;overflow-y:auto;background:#020617;border:1px solid #1e293b;border-radius:10px;padding:10px}.gfs-expl-item{padding:10px;margin-bottom:8px;background:rgba(30,41,59,.5);border-radius:8px;border-left:3px solid #6366f1}.gfs-expl-num{font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px;text-transform:uppercase}.gfs-expl-ans{font-size:11.5px;color:#86efac;font-weight:600;margin-bottom:4px}.gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.55}.gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:4px}.gfs-toggle{position:relative;display:inline-block;width:36px;height:20px}.gfs-toggle input{opacity:0;width:0;height:0}.gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:20px}.gfs-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}input:checked + .gfs-slider{background:#6366f1}input:checked + .gfs-slider:before{transform:translateX(16px)}#gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,.5);z-index:2147483646;font-weight:700}#gfs-stealth-btn.active{display:flex}.gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;margin-bottom:8px}.gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:600}.gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}.gfs-persona{font-size:10px;color:#a5b4fc;margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,.1);border-left:2px solid #8b5cf6;border-radius:0 6px 6px 0;line-height:1.5;font-style:italic}`;
 
   const styleEl = document.createElement('style');
   styleEl.textContent = CSS;
@@ -39,7 +51,7 @@
   panel.id = 'gfs-panel';
   panel.innerHTML = `
     <div class="gfs-hdr" id="gfs-hdr">
-      <div class="gfs-hdr-title"><div class="gfs-logo">⚡</div><span>GFS v10</span><span class="gfs-status" id="gfs-status"></span></div>
+      <div class="gfs-hdr-title"><div class="gfs-logo">⚡</div><span>GFS v13</span><span class="gfs-status" id="gfs-status"></span></div>
       <div class="gfs-hdr-btns"><button id="gfs-min">−</button><button id="gfs-stealth">👻</button><button id="gfs-close">×</button></div>
     </div>
     <div class="gfs-tabs">
@@ -51,6 +63,7 @@
     <div class="gfs-body" id="gfs-body">
       <div class="gfs-tab-panel active" data-panel="solve">
         <div class="gfs-tip" id="gfs-tip">Groq · openai/gpt-oss-120b</div>
+        <div class="gfs-persona" id="gfs-persona">Persona: —</div>
         <div class="gfs-row" style="margin-top:12px"><button class="gfs-btn gfs-btn-main" id="gfs-solve">NYELESAIN SOAL</button></div>
         <div class="gfs-progress" id="gfs-progress"><div class="gfs-progress-fill" id="gfs-progress-fill"></div></div>
         <div class="gfs-row-3" style="margin-top:12px">
@@ -64,12 +77,13 @@
         <div class="gfs-expl-list" id="gfs-expl-list"><div style="color:#64748b;font-size:11px;text-align:center;padding:20px">Belum ada penjelasan.</div></div>
       </div>
       <div class="gfs-tab-panel" data-panel="settings">
-        <div class="gfs-row"><label class="gfs-lbl">Provider</label><select class="gfs-select" id="gfs-provider"><option value="groq">Groq (recommended)</option><option value="andisearch">Andi X Cici</option><option value="ayesoul">Ayesoul</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
+        <div class="gfs-row"><label class="gfs-lbl">Provider</label><select class="gfs-select" id="gfs-provider"><option value="groq">Groq (recommended)</option><option value="cloudflare">Cloudflare AI</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
         <div class="gfs-row"><label class="gfs-lbl">Model</label><select class="gfs-select" id="gfs-model"></select></div>
         <div class="gfs-row" id="gfs-key-row"><label class="gfs-lbl">API Key <span class="gfs-hint" id="gfs-key-hint">auto</span></label><div class="gfs-input-wrap"><input class="gfs-input" id="gfs-key" type="password" autocomplete="off"><button class="gfs-eye" id="gfs-eye">👁</button></div></div>
         <div class="gfs-row">
           <div class="gfs-switch-row"><div><div class="gfs-switch-lbl">Auto-Scroll</div><div class="gfs-switch-desc">Scroll ke soal</div></div><label class="gfs-toggle"><input type="checkbox" id="gfs-opt-scroll" checked><span class="gfs-slider"></span></label></div>
           <div class="gfs-switch-row"><div><div class="gfs-switch-lbl">Auto-Explanation</div><div class="gfs-switch-desc">AI jelasin jawaban</div></div><label class="gfs-toggle"><input type="checkbox" id="gfs-opt-explain" checked><span class="gfs-slider"></span></label></div>
+          <div class="gfs-switch-row"><div><div class="gfs-switch-lbl">Show Personality</div><div class="gfs-switch-desc">Tampilkan persona AI</div></div><label class="gfs-toggle"><input type="checkbox" id="gfs-opt-persona" checked><span class="gfs-slider"></span></label></div>
         </div>
         <div class="gfs-row-2"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-save">💾 SAVE</button><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-load">📁 LOAD</button></div>
       </div>
@@ -112,16 +126,18 @@
     const sel = $('gfs-model'); sel.innerHTML = '';
     (MODELS[p] || []).forEach((m) => { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
     if (HARDCODED_KEYS[p]) { $('gfs-key').value = HARDCODED_KEYS[p]; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'auto'; }
-    else if (p === 'andisearch' || p === 'ayesoul') { $('gfs-key').value = 'freeApikey'; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'free'; }
     else { $('gfs-key').value = ''; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'manual'; }
     const bs = BATCH_SIZE[p] || 6;
     $('gfs-tip').textContent = p + ' · ' + sel.value + ' · batch ' + bs;
+    if ($('gfs-opt-persona').checked) $('gfs-persona').textContent = 'Persona: ' + (PERSONALITY[p] || '—');
+    else $('gfs-persona').style.display = 'none';
   };
   $('gfs-provider').onchange = updateModels;
   $('gfs-model').onchange = () => { $('gfs-tip').textContent = $('gfs-provider').value + ' · ' + $('gfs-model').value; };
+  $('gfs-opt-persona').onchange = () => { $('gfs-persona').style.display = $('gfs-opt-persona').checked ? 'block' : 'none'; if ($('gfs-opt-persona').checked) $('gfs-persona').textContent = 'Persona: ' + (PERSONALITY[$('gfs-provider').value] || '—'); };
 
-  $('gfs-save').onclick = () => { localStorage.setItem('gfs_config', JSON.stringify({ provider: $('gfs-provider').value, model: $('gfs-model').value, key: $('gfs-key').value, oS: $('gfs-opt-scroll').checked, oE: $('gfs-opt-explain').checked })); log('Saved.', 'ok'); };
-  $('gfs-load').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gfs_config') || '{}'); if (c.provider) { $('gfs-provider').value = c.provider; updateModels(); } if (c.model) $('gfs-model').value = c.model; if (c.key && !HARDCODED_KEYS[$('gfs-provider').value]) $('gfs-key').value = c.key; if (c.oS !== undefined) $('gfs-opt-scroll').checked = c.oS; if (c.oE !== undefined) $('gfs-opt-explain').checked = c.oE; log('Loaded.', 'ok'); } catch (e) { log('Load gagal', 'err'); } };
+  $('gfs-save').onclick = () => { localStorage.setItem('gfs_config', JSON.stringify({ provider: $('gfs-provider').value, model: $('gfs-model').value, key: $('gfs-key').value, oS: $('gfs-opt-scroll').checked, oE: $('gfs-opt-explain').checked, oP: $('gfs-opt-persona').checked })); log('Saved.', 'ok'); };
+  $('gfs-load').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gfs_config') || '{}'); if (c.provider) { $('gfs-provider').value = c.provider; updateModels(); } if (c.model) $('gfs-model').value = c.model; if (c.key && !HARDCODED_KEYS[$('gfs-provider').value]) $('gfs-key').value = c.key; if (c.oS !== undefined) $('gfs-opt-scroll').checked = c.oS; if (c.oE !== undefined) $('gfs-opt-explain').checked = c.oE; if (c.oP !== undefined) $('gfs-opt-persona').checked = c.oP; log('Loaded.', 'ok'); } catch (e) { log('Load gagal', 'err'); } };
 
   $('gfs-export').onclick = () => { const txt = [...$('gfs-log').children].map((c) => c.textContent).join('\n'); const blob = new Blob([txt], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'gfs-log.txt'; a.click(); };
   $('gfs-clearlog').onclick = () => { $('gfs-log').innerHTML = ''; };
@@ -149,32 +165,44 @@
         const h = el.querySelector('[role="heading"]') || el.querySelector('.M7eMe') || el.querySelector('.Qr7Oae');
         if (h && h.innerText && h.innerText.trim()) { qText = h.innerText.trim(); break; }
       }
-      const opts = [...g.querySelectorAll('div[role="radio"]')].map((o) => ({ text: (o.innerText || '').trim(), el: o }));
+      const radios = [...g.querySelectorAll('div[role="radio"]')];
+      const opts = radios.map((r) => {
+        let text = (r.innerText || '').trim();
+        if (!text) { const inner = r.querySelector('span, label, [dir]'); if (inner && inner.innerText) text = inner.innerText.trim(); }
+        if (!text && r.parentElement) { const wrapperText = (r.parentElement.innerText || '').trim(); const lines = wrapperText.split('\n').map(s => s.trim()).filter(Boolean); if (lines.length > 0) text = lines.find(l => !/^\d+$/.test(l)) || lines[0]; }
+        if (!text) text = r.getAttribute('aria-label') || r.getAttribute('data-value') || '';
+        if (!text && r.nextElementSibling) text = (r.nextElementSibling.innerText || '').trim();
+        return { text, el: r };
+      }).filter(o => o.text);
       if (opts.length) questions.push({ idx: i, qText, opts, group: g });
     });
     return questions;
   };
 
-  $('gfs-parse').onclick = () => { const q = parseQuestions(); log('Ditemukan ' + q.length + ' soal.', 'ok'); q.slice(0, 5).forEach((item, i) => log('Q' + (i + 1) + ': ' + (item.qText || '').slice(0, 70), 'info')); };
+  $('gfs-parse').onclick = () => {
+    const q = parseQuestions();
+    log('Ditemukan ' + q.length + ' soal.', 'ok');
+    q.slice(0, 3).forEach((item, i) => { log('Q' + (i + 1) + ': ' + (item.qText || '(no text)').slice(0, 60), 'info'); item.opts.forEach((o, j) => log('   ' + (j + 1) + '. ' + o.text.slice(0, 70), 'info')); });
+    if (q.length === 0) { const groups = document.querySelectorAll('div[role="radiogroup"]'); log('Raw groups: ' + groups.length, 'warn'); if (groups.length > 0) log('Sample HTML: ' + groups[0].outerHTML.slice(0, 500), 'warn'); }
+  };
   $('gfs-clear').onclick = () => { let c = 0; document.querySelectorAll('div[role="radio"][aria-checked="true"]').forEach((el) => { el.click(); c++; }); log('Cleared ' + c + '.', 'warn'); };
   $('gfs-expl-toggle').onclick = () => { document.querySelectorAll('.gfs-tab').forEach((t) => t.classList.remove('active')); document.querySelectorAll('.gfs-tab-panel').forEach((p) => p.classList.remove('active')); document.querySelector('.gfs-tab[data-tab="explain"]').classList.add('active'); document.querySelector('.gfs-tab-panel[data-panel="explain"]').classList.add('active'); };
 
-  // ─── GROQ ───
-  const callGroq = async (key, model, prompt) => {
+  // ─── AI CALLERS ───
+  const callGroq = async (key, model, prompt, persona) => {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: 'You answer MCQ. Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}. Output JSON only.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.1, max_tokens: 2000 })
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' You answer MCQ. Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}. Output JSON only.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.1, max_tokens: 2000 })
     });
     if (!res.ok) throw new Error('Groq ' + res.status + ': ' + (await res.text()).slice(0, 150));
     const data = await res.json();
     return data.choices[0].message.content;
   };
 
-  // ─── OPENROUTER ───
-  const callOpenRouter = async (key, model, prompt) => {
+  const callOpenRouter = async (key, model, prompt, persona) => {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: 'You answer MCQ. Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.1, max_tokens: 2000 })
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.1, max_tokens: 2000 })
     });
     if (!res.ok) throw new Error('OpenRouter ' + res.status + ': ' + (await res.text()).slice(0, 150));
     const data = await res.json();
@@ -182,47 +210,44 @@
     return data.choices[0].message.content;
   };
 
-  // ─── OPENAI ───
-  const callOpenAI = async (key, model, prompt) => {
+  const callOpenAI = async (key, model, prompt, persona) => {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: 'Answer MCQ. Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, max_tokens: 2000 })
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, max_tokens: 2000 })
     });
     if (!res.ok) throw new Error('OpenAI ' + res.status);
     const data = await res.json();
     return data.choices[0].message.content;
   };
 
-  // ─── ANDI X CICI — batching ───
-  const callAndiSearch = async (key, model, prompt) => {
-    const url = 'https://anabot.my.id/api/ai/andisearch?prompt=' + encodeURIComponent(prompt) + '&apikey=' + encodeURIComponent(key);
-    const res = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json' } });
-    if (!res.ok) throw new Error('AndiSearch ' + res.status);
-    const data = await res.json();
-    if (!data.success) throw new Error('AndiSearch fail: ' + JSON.stringify(data).slice(0, 100));
-    const text = data?.data?.result?.chat || '';
-    if (!text) throw new Error('AndiSearch empty');
-    log('AndiSearch raw: ' + text.slice(0, 200), 'warn');
-    return text;
-  };
-
-  // ─── AYESOUL — batching ───
-  const callAyesoul = async (key, model, prompt) => {
-    const res = await fetch('https://anabot.my.id/api/ai/ayesoul', {
+  // ─── CLOUDFLARE AI ───
+  const callCloudflare = async (token, model, prompt, persona) => {
+    const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, imageUrl: '', apikey: key })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: persona + ' You answer MCQ. Return JSON object: {"answers":[{"i":<index>,"a":"<option text PERSIS>"}]}. Output JSON only, no markdown, no extra text.' },
+          { role: 'user', content: prompt }
+        ]
+      })
     });
-    if (!res.ok) throw new Error('Ayesoul ' + res.status);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error('Cloudflare ' + res.status + ': ' + errText.slice(0, 200));
+    }
     const data = await res.json();
-    if (!data.success) throw new Error('Ayesoul fail: ' + JSON.stringify(data).slice(0, 100));
-    const text = data?.data?.result?.stream || '';
-    if (!text) throw new Error('Ayesoul empty');
-    log('Ayesoul raw: ' + text.slice(0, 200), 'warn');
+    if (!data.success) throw new Error('Cloudflare fail: ' + JSON.stringify(data.errors || data).slice(0, 150));
+
+    let text = data?.result?.response;
+    if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
+
+    if (!text) throw new Error('Cloudflare empty. Keys: ' + Object.keys(data?.result || {}).join(','));
+    log('CF raw: ' + String(text).slice(0, 200), 'ai');
     return text;
   };
 
-  // ─── PARSER ───
   const parseResponse = (raw) => {
     let data;
     try { data = JSON.parse(raw); }
@@ -266,9 +291,7 @@
     for (const opt of q.opts) {
       const no = normalize(opt.text);
       const words = no.split(' ').filter(w => w.length > 3);
-      if (words.length > 0 && words.every(w => nStrip.includes(w))) {
-        return { el: opt.el, reason: 'word-match' };
-      }
+      if (words.length > 0 && words.every(w => nStrip.includes(w))) return { el: opt.el, reason: 'word-match' };
     }
     return { el: null, reason: 'no-match' };
   };
@@ -283,10 +306,7 @@
       if (mt.reason === 'no-match') item.style.borderLeftColor = '#ef4444';
       else if (mt.reason && mt.reason.startsWith('contains-best')) item.style.borderLeftColor = '#fbbf24';
       else item.style.borderLeftColor = '#22c55e';
-      item.innerHTML = '<div class="gfs-expl-num">Q' + (a.idx + 1) + ' · ' + (mt.reason || '') + '</div>' +
-        '<div class="gfs-expl-ans">' + (mt.reason === 'no-match' ? '✗ ' : '✓ ') + a.answer + '</div>' +
-        '<div class="gfs-expl-reason">' + (a.reason || q.qText.slice(0, 150)) + '</div>' +
-        '<div class="gfs-expl-conf">Conf: ' + (a.confidence * 100).toFixed(0) + '%</div>';
+      item.innerHTML = '<div class="gfs-expl-num">Q' + (a.idx + 1) + ' · ' + (mt.reason || '') + '</div>' + '<div class="gfs-expl-ans">' + (mt.reason === 'no-match' ? '✗ ' : '✓ ') + a.answer + '</div>' + '<div class="gfs-expl-reason">' + (a.reason || q.qText.slice(0, 150)) + '</div>' + '<div class="gfs-expl-conf">Conf: ' + (a.confidence * 100).toFixed(0) + '%</div>';
       list.appendChild(item);
     });
   };
@@ -300,15 +320,25 @@
     if (!key) return log('API key kosong.', 'err');
 
     const questions = parseQuestions();
-    if (!questions.length) return log('Nggak ada soal.', 'err');
+    if (!questions.length) {
+      log('Nggak ada soal ke-parse!', 'err');
+      const groups = document.querySelectorAll('div[role="radiogroup"]');
+      log('Raw groups: ' + groups.length, 'warn');
+      if (groups.length > 0) log('HTML: ' + groups[0].outerHTML.slice(0, 400), 'warn');
+      return;
+    }
 
     state.running = true; setStatus('running'); $('gfs-status').classList.add('busy');
     const btn = $('gfs-solve'); btn.disabled = true; btn.textContent = '⏳ PROCESSING...';
     $('gfs-progress').classList.add('active');
 
     const wantExplain = $('gfs-opt-explain').checked;
+    const persona = PERSONALITY[provider] || '';
     const bs = BATCH_SIZE[provider] || 6;
     const totalBatches = Math.ceil(questions.length / bs);
+
+    log('═══ PROVIDER: ' + provider + ' · MODEL: ' + model + ' ═══', 'ai');
+    log('Persona: ' + persona.slice(0, 100), 'ai');
     log('Total: ' + questions.length + ' soal · ' + totalBatches + ' batch × ' + bs, 'info');
 
     const allAnswers = [];
@@ -318,21 +348,20 @@
       for (let b = 0; b < totalBatches; b++) {
         const start = b * bs;
         const batch = questions.slice(start, start + bs);
-        log('══ Batch ' + (b + 1) + '/' + totalBatches + ' (Q' + (start + 1) + '-' + (start + batch.length) + ') ══', 'info');
+        log('══ Batch ' + (b + 1) + '/' + totalBatches + ' ══', 'info');
 
         const batchPrompt = 'Jawab soal pilihan ganda berikut. Untuk setiap soal pilih opsi PALING TEPAT.\n' +
-          'BALAS HANYA dengan JSON object, tidak ada teks lain:\n' +
+          'BALAS HANYA dengan JSON object:\n' +
           '{"answers":[{"i":' + start + ',"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan>"' : '') + '}]}\n\n' +
-          'ATURAN: "i" = nomor soal (mulai dari ' + start + '). "a" = teks opsi SAMA PERSIS.\n\n' +
+          'ATURAN: "i" = nomor soal. "a" = teks opsi SAMA PERSIS.\n\n' +
           'SOAL:\n' + batch.map((q, i) => '[' + (start + i) + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
 
         let raw;
         try {
-          if (provider === 'groq') raw = await callGroq(key, model, batchPrompt);
-          else if (provider === 'openrouter') raw = await callOpenRouter(key, model, batchPrompt);
-          else if (provider === 'andisearch') raw = await callAndiSearch(key, model, batchPrompt);
-          else if (provider === 'ayesoul') raw = await callAyesoul(key, model, batchPrompt);
-          else raw = await callOpenAI(key, model, batchPrompt);
+          if (provider === 'groq') raw = await callGroq(key, model, batchPrompt, persona);
+          else if (provider === 'cloudflare') raw = await callCloudflare(key, model, batchPrompt, persona);
+          else if (provider === 'openrouter') raw = await callOpenRouter(key, model, batchPrompt, persona);
+          else raw = await callOpenAI(key, model, batchPrompt, persona);
           log('Batch ' + (b + 1) + ' response (' + raw.length + ' chars)', 'ok');
         } catch (e) {
           log('Batch ' + (b + 1) + ' gagal: ' + e.message, 'err');
@@ -340,35 +369,16 @@
           continue;
         }
 
-        let answers = [];
         try {
-          answers = parseResponse(raw);
-          log('Batch ' + (b + 1) + ' JSON parsed: ' + answers.length + ' jawaban', 'ok');
-        } catch (jsonErr) {
-          log('JSON parse fail, coba text extract: ' + jsonErr.message, 'warn');
-          const ja = raw.match(/JAWABAN\s*[:=]\s*(.+?)(?:\n|$)/i) || raw.match(/answer["\s:]+(.+?)(?:\n|")/i);
-          if (ja && ja[1]) {
-            answers = [{ idx: start, answer: ja[1].trim().slice(0, 200), confidence: 0.7, reason: 'text-extract' }];
-            log('Text extract: ' + ja[1].trim().slice(0, 60), 'warn');
-          } else {
-            for (let qi = 0; qi < batch.length; qi++) {
-              const q = batch[qi];
-              const found = q.opts.find(o => raw.toLowerCase().includes(o.text.toLowerCase().slice(0, 20)));
-              if (found) {
-                answers.push({ idx: start + qi, answer: found.text, confidence: 0.6, reason: 'substring-match' });
-                log('Substring match Q' + (start + qi) + ': ' + found.text.slice(0, 40), 'warn');
-              }
-            }
-          }
-        }
-
-        if (answers.length === 0) {
-          log('Batch ' + (b + 1) + ' TIDAK ada jawaban valid. Raw: ' + raw.slice(0, 150), 'err');
-        } else {
+          const answers = parseResponse(raw);
+          log('Batch ' + (b + 1) + ' → ' + answers.length + ' jawaban', 'ok');
           answers.forEach(a => allAnswers.push(a));
+        } catch (e) {
+          log('Batch ' + (b + 1) + ' parse gagal: ' + e.message, 'warn');
+          log('Raw: ' + raw.slice(0, 200), 'warn');
         }
 
-        await sleep(bs === 1 ? 1500 : 800);
+        await sleep(800);
       }
 
       log('Total jawaban AI: ' + allAnswers.length, 'info');
@@ -381,25 +391,20 @@
         if (!q) { log('Q' + a.idx + ' ⚠ question not found', 'warn'); continue; }
         const mt = findOption(q, a.answer);
         allMatches[a.idx] = mt;
-        log('Q' + a.idx + ' → AI: "' + a.answer.slice(0, 50) + '" · match: ' + mt.reason, 'info');
+        log('Q' + a.idx + ' → "' + a.answer.slice(0, 50) + '" · ' + mt.reason, 'info');
         if (mt.el) {
           if ($('gfs-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          await sleep(100);
-          mt.el.click();
+          await sleep(100); mt.el.click();
           clicked++; totalConf += a.confidence;
           log('  ✓ CLICKED', 'ok');
-        } else {
-          skipped++;
-          log('  ✗ NO MATCH — pilihan yang tersedia:', 'err');
-          q.opts.forEach(o => log('    · ' + o.text.slice(0, 70), 'err'));
-        }
+        } else { skipped++; log('  ✗ NO MATCH', 'err'); }
         await sleep(150);
       }
 
       renderExplanations(allAnswers, questions, allMatches);
       $('gfs-score').classList.add('active');
       $('gfs-score-v').textContent = clicked + '/' + questions.length;
-      $('gfs-score-d').textContent = 'Terisi: ' + clicked + ' · Skip: ' + skipped + ' · by Alip Lab';
+      $('gfs-score-d').textContent = 'Provider: ' + provider + ' · Terisi: ' + clicked + ' · Skip: ' + skipped + ' · by Alip Lab';
       setStatus('done');
       log('═══ SELESAI: ' + clicked + '/' + questions.length + ' · skip ' + skipped + ' ═══', 'ok');
     } catch (e) {
@@ -421,5 +426,5 @@
 
   $('gfs-provider').value = 'groq';
   updateModels();
-  log('GFS v10 by Alip Lab. Batch 4 + debug kuat.', 'ok');
+  log('GFS v13 by Alip Lab. Cloudflare AI fixed.', 'ok');
 })();
