@@ -1,4 +1,5 @@
 /* GFS AI Solver — Google Form AI Auto-Fill + Score Prediction
+ * Providers: Gemini, OpenAI, Groq
  * For education & testing only. Do not use on real exams.
  */
 (function () {
@@ -8,8 +9,6 @@
     return;
   }
   window.__GFS_LOADED__ = true;
-
-  const state = { provider: 'gemini', model: 'gemini-2.5-flash' };
 
   const css = `
   #gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:340px;max-width:90vw;background:#0f172a;color:#e2e8f0;border:1px solid #1e293b;border-radius:12px;box-shadow:0 25px 60px rgba(0,0,0,.7);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;user-select:none;animation:gfsIn .3s ease-out}
@@ -56,6 +55,7 @@
         <label class="gfs-lbl">Provider</label>
         <select class="gfs-select" id="gfs-provider">
           <option value="gemini">Google Gemini</option>
+          <option value="groq">Groq</option>
           <option value="openai">OpenAI ChatGPT</option>
         </select>
       </div>
@@ -99,7 +99,7 @@
     window.__GFS_LOADED__ = false;
   };
 
-  // ─── Drag logic (fix: reset transform on drag start) ───
+  // Drag logic
   const hdr = $('gfs-hdr');
   let isDrag = false, ox = 0, oy = 0;
   const startDrag = (x, y) => {
@@ -126,7 +126,7 @@
   document.addEventListener('mouseup', endDrag);
   document.addEventListener('touchend', endDrag);
 
-  // ─── Parse Google Form questions ───
+  // Parse Google Form questions
   const parseQuestions = () => {
     const groups = document.querySelectorAll('div[role="radiogroup"], div[role="listbox"]');
     const questions = [];
@@ -193,6 +193,25 @@
     return data.choices[0].message.content;
   };
 
+  const callGroq = async (apiKey, model, prompt) => {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: 'You answer multiple choice questions. Output ONLY valid JSON array, no markdown, no extra text.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!res.ok) throw new Error('Groq HTTP ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    const data = await res.json();
+    return data.choices[0].message.content;
+  };
+
   $('gfs-solve').onclick = async () => {
     const key = $('gfs-key').value.trim();
     const provider = $('gfs-provider').value;
@@ -205,8 +224,8 @@
 
     const prompt =
       'You are an exam assistant. Answer the multiple choice questions below.\n' +
-      'Return ONLY a JSON array with no markdown, no explanation:\n' +
-      '[{"idx":0,"answer":"<exact option text>","confidence":0.9}]\n\n' +
+      'Return ONLY a JSON object with key "answers" containing array:\n' +
+      '{"answers":[{"idx":0,"answer":"<exact option text>","confidence":0.9}]}\n\n' +
       'Rules:\n' +
       '- For single choice: 1 answer per question\n' +
       '- For multi choice (checkbox): 1-2 most correct options\n' +
@@ -222,12 +241,22 @@
     try {
       let raw;
       if (provider === 'gemini') raw = await callGemini(key, model, prompt);
+      else if (provider === 'groq') raw = await callGroq(key, model, prompt);
       else raw = await callOpenAI(key, model, prompt);
       log('AI response diterima.', 'ok');
 
-      const m = raw.match(/\[[\s\S]*\]/);
-      if (!m) throw new Error('AI response bukan JSON valid');
-      const answers = JSON.parse(m[0]);
+      // Try to extract JSON array
+      let answers;
+      const arrMatch = raw.match(/\[[\s\S]*\]/);
+      const objMatch = raw.match(/\{[\s\S]*\}/);
+      if (arrMatch) {
+        answers = JSON.parse(arrMatch[0]);
+      } else if (objMatch) {
+        const parsed = JSON.parse(objMatch[0]);
+        answers = parsed.answers || parsed.data || parsed.results || [];
+      } else {
+        throw new Error('AI response bukan JSON valid');
+      }
       log('AI kasih ' + answers.length + ' jawaban.', 'ok');
 
       let clicked = 0, totalConf = 0;
@@ -269,7 +298,10 @@
   };
 
   $('gfs-provider').onchange = function () {
-    $('gfs-model').value = this.value === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
+    const m = $('gfs-model');
+    if (this.value === 'gemini') m.value = 'gemini-2.5-flash';
+    else if (this.value === 'groq') m.value = 'llama-3.3-70b-versatile';
+    else m.value = 'gpt-4o-mini';
   };
 
   log('Panel aktif. Drag header buat geser.', 'ok');
