@@ -1,6 +1,4 @@
-/* GFS AI Solver PRO
- * Providers: Xrina (free), Gemini, Groq, OpenAI
- */
+/* GFS AI Solver PRO v2.2 — dengan CORS Proxy */
 (function () {
   if (window.__GFS_LOADED__) {
     document.getElementById('gfs-panel')?.remove();
@@ -12,12 +10,21 @@
   const state = {
     provider: 'xrina',
     mode: 'balanced',
+    proxy: 'allorigins',
     running: false,
     startTime: 0,
     stats: { ok: 0, fail: 0, total: 0, confidence: 0 }
   };
 
   const XRINA_ENDPOINT = 'https://apiii-xrina.my.id/ai/gemini?text=';
+
+  const PROXIES = {
+    none: (u) => u,
+    allorigins: (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    codetabs: (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+    corsproxy: (u) => 'https://corsproxy.io/?' + encodeURIComponent(u),
+    thingproxy: (u) => 'https://thingproxy.freeboard.io/fetch/' + u
+  };
 
   const MODELS = {
     xrina: ['Gemini AI'],
@@ -52,8 +59,7 @@
   .gfs-lbl-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
   .gfs-hint{font-size:9px;color:#475569;text-transform:none;letter-spacing:0;font-weight:400}
   .gfs-input,.gfs-select{width:100%;padding:10px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none;transition:.15s}
-  .gfs-input:focus,.gfs-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15);background:#0b1220}
-  .gfs-select{cursor:pointer}
+  .gfs-input:focus,.gfs-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
   .gfs-input::placeholder{color:#475569}
   .gfs-input-group{position:relative}
   .gfs-input-group .gfs-input{padding-right:44px}
@@ -62,7 +68,7 @@
   .gfs-btn{width:100%;padding:11px 14px;border:none;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;display:flex;align-items:center;justify-content:center;gap:6px}
   .gfs-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 14px rgba(99,102,241,.35)}
   .gfs-btn-main:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.5)}
-  .gfs-btn-main:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  .gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}
   .gfs-btn-sec{background:#1e293b;color:#cbd5e1;border:1px solid #334155}
   .gfs-btn-sec:hover{background:#334155;color:#e2e8f0}
   .gfs-btn-danger{background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d}
@@ -71,7 +77,6 @@
   .gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .gfs-mode-group{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .gfs-mode{padding:8px 4px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#94a3b8;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s;text-align:center}
-  .gfs-mode:hover{border-color:#475569;color:#cbd5e1}
   .gfs-mode.active{background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2));border-color:#6366f1;color:#c7d2fe}
   .gfs-mode-name{display:block;font-size:11px}
   .gfs-mode-sub{display:block;font-size:9px;opacity:.7;margin-top:2px;font-weight:400}
@@ -83,19 +88,20 @@
   .gfs-log .warn{color:#fbbf24}
   .gfs-progress{height:4px;background:#1e293b;border-radius:2px;overflow:hidden;margin-top:8px;display:none}
   .gfs-progress.active{display:block}
-  .gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .3s ease;border-radius:2px}
+  .gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .3s ease}
   .gfs-score{margin-top:12px;padding:14px;background:linear-gradient(135deg,#1e293b,#334155);border-radius:10px;border-left:3px solid #6366f1;display:none}
-  .gfs-score.active{display:block;animation:gfsIn .3s}
+  .gfs-score.active{display:block}
   .gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600}
   .gfs-score-v{font-size:32px;font-weight:800;line-height:1;background:linear-gradient(135deg,#22c55e,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-  .gfs-score-d{font-size:10.5px;color:#94a3b8;margin-top:6px;line-height:1.5}
+  .gfs-score-d{font-size:10.5px;color:#94a3b8;margin-top:6px}
   .gfs-score-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #475569}
   .gfs-stat{text-align:center}
   .gfs-stat-v{font-size:16px;font-weight:700;color:#e2e8f0}
   .gfs-stat-l{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
   .gfs-footer{padding:8px 14px;background:#0a0f1c;border-top:1px solid #1e293b;border-radius:0 0 14px 14px;font-size:10px;color:#475569;display:flex;justify-content:space-between;align-items:center}
   .gfs-badge{padding:2px 6px;background:#1e293b;border-radius:4px;font-family:monospace;font-size:9.5px;color:#818cf8}
-  .gfs-free{display:inline-block;padding:2px 6px;background:#14532d;color:#86efac;border-radius:4px;font-size:9px;font-weight:600;margin-left:6px}
+  .gfs-free{display:inline-block;padding:2px 6px;background:#14532d;color:#86efac;border-radius:4px;font-size:9px;font-weight:600;margin-top:6px}
+  .gfs-proxy-hint{font-size:9.5px;color:#64748b;margin-top:4px;line-height:1.4}
   `;
 
   const styleEl = document.createElement('style');
@@ -106,14 +112,8 @@
   panel.id = 'gfs-panel';
   panel.innerHTML = `
     <div class="gfs-hdr" id="gfs-hdr">
-      <div class="gfs-hdr-title">
-        <span class="gfs-dot"></span>
-        <span>GFS AI Solver <span style="opacity:.7;font-weight:400">PRO</span></span>
-      </div>
-      <div class="gfs-hdr-btns">
-        <button id="gfs-min">−</button>
-        <button id="gfs-close">×</button>
-      </div>
+      <div class="gfs-hdr-title"><span class="gfs-dot"></span><span>GFS AI Solver <span style="opacity:.7;font-weight:400">PRO v2.2</span></span></div>
+      <div class="gfs-hdr-btns"><button id="gfs-min">−</button><button id="gfs-close">×</button></div>
     </div>
     <div class="gfs-tabs">
       <button class="gfs-tab active" data-tab="solve">Solve</button>
@@ -123,19 +123,14 @@
     <div class="gfs-body" id="gfs-body">
       <div class="gfs-tab-panel active" data-panel="solve">
         <div class="gfs-row">
-          <div class="gfs-lbl-row">
-            <label class="gfs-lbl">Mode</label>
-            <span class="gfs-hint">strategi</span>
-          </div>
+          <div class="gfs-lbl-row"><label class="gfs-lbl">Mode</label><span class="gfs-hint">strategi</span></div>
           <div class="gfs-mode-group">
             <button class="gfs-mode" data-mode="fast"><span class="gfs-mode-name">Fast</span><span class="gfs-mode-sub">cepat</span></button>
             <button class="gfs-mode active" data-mode="balanced"><span class="gfs-mode-name">Balanced</span><span class="gfs-mode-sub">default</span></button>
             <button class="gfs-mode" data-mode="safe"><span class="gfs-mode-name">Safe</span><span class="gfs-mode-sub">akurat</span></button>
           </div>
         </div>
-        <div class="gfs-row">
-          <button class="gfs-btn gfs-btn-main" id="gfs-solve">NYELESAIN SOAL</button>
-        </div>
+        <div class="gfs-row"><button class="gfs-btn gfs-btn-main" id="gfs-solve">NYELESAIN SOAL</button></div>
         <div class="gfs-progress" id="gfs-progress"><div class="gfs-progress-fill" id="gfs-progress-fill"></div></div>
         <div class="gfs-row-2" style="margin-top:12px">
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-parse">CEK SOAL</button>
@@ -161,12 +156,20 @@
             <option value="groq">Groq</option>
             <option value="openai">OpenAI</option>
           </select>
-          <div id="gfs-free-tag" class="gfs-free" style="margin-top:6px">GRATIS · NO API KEY</div>
+          <div id="gfs-free-tag" class="gfs-free">GRATIS · NO API KEY</div>
         </div>
         <div class="gfs-row">
-          <label class="gfs-lbl">Model</label>
-          <select class="gfs-select" id="gfs-model"></select>
+          <label class="gfs-lbl">CORS Proxy (untuk Xrina)</label>
+          <select class="gfs-select" id="gfs-proxy">
+            <option value="allorigins">AllOrigins (recommended)</option>
+            <option value="codetabs">CodeTabs</option>
+            <option value="corsproxy">corsproxy.io</option>
+            <option value="thingproxy">thingproxy</option>
+            <option value="none">None (direct)</option>
+          </select>
+          <div class="gfs-proxy-hint">Kalau Xrina 400/blocked, coba proxy lain.</div>
         </div>
+        <div class="gfs-row"><label class="gfs-lbl">Model</label><select class="gfs-select" id="gfs-model"></select></div>
         <div class="gfs-row" id="gfs-key-row" style="display:none">
           <label class="gfs-lbl">API Key</label>
           <div class="gfs-input-group">
@@ -179,10 +182,7 @@
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-load">📁 LOAD</button>
         </div>
         <div class="gfs-row" style="margin-top:14px">
-          <div class="gfs-lbl-row">
-            <label class="gfs-lbl">Confidence Threshold</label>
-            <span class="gfs-hint" id="gfs-conf-val">70%</span>
-          </div>
+          <div class="gfs-lbl-row"><label class="gfs-lbl">Confidence Threshold</label><span class="gfs-hint" id="gfs-conf-val">70%</span></div>
           <input type="range" id="gfs-conf" min="0" max="100" value="70" style="width:100%;accent-color:#6366f1" />
         </div>
         <div class="gfs-row">
@@ -195,10 +195,7 @@
           </select>
         </div>
         <div class="gfs-row">
-          <div class="gfs-lbl-row">
-            <label class="gfs-lbl">Delay antar soal</label>
-            <span class="gfs-hint" id="gfs-delay-val">200</span>
-          </div>
+          <div class="gfs-lbl-row"><label class="gfs-lbl">Delay antar soal</label><span class="gfs-hint" id="gfs-delay-val">200</span></div>
           <input type="range" id="gfs-delay" min="50" max="800" step="50" value="200" style="width:100%;accent-color:#6366f1" />
         </div>
       </div>
@@ -207,13 +204,10 @@
           <button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-export">📋 EXPORT</button>
           <button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clearlog">🗑 CLEAR</button>
         </div>
-        <div class="gfs-log" id="gfs-log"><div>Ready. Provider default: Xrina (no key needed).</div></div>
+        <div class="gfs-log" id="gfs-log"><div>Ready. Provider: Xrina + AllOrigins proxy.</div></div>
       </div>
     </div>
-    <div class="gfs-footer">
-      <span>GFS PRO v2.1</span>
-      <span class="gfs-badge" id="gfs-footer-stat">idle</span>
-    </div>`;
+    <div class="gfs-footer"><span>GFS PRO v2.2</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
   document.body.appendChild(panel);
 
   const $ = (id) => document.getElementById(id);
@@ -247,7 +241,6 @@
     el.scrollTop = el.scrollHeight;
     while (el.children.length > 300) el.removeChild(el.firstChild);
   };
-
   const setFooter = (txt) => { $('gfs-footer-stat').textContent = txt; };
 
   $('gfs-eye').onclick = () => {
@@ -265,12 +258,13 @@
       sel.appendChild(o);
     });
     state.provider = p;
-    // Sembunyikan API key row untuk xrina
     $('gfs-key-row').style.display = (p === 'xrina') ? 'none' : 'block';
     $('gfs-free-tag').style.display = (p === 'xrina') ? 'inline-block' : 'none';
   };
   $('gfs-provider').onchange = updateModels;
   updateModels();
+
+  $('gfs-proxy').onchange = (e) => { state.proxy = e.target.value; };
 
   $('gfs-conf').oninput = (e) => { $('gfs-conf-val').textContent = e.target.value + '%'; };
   $('gfs-delay').oninput = (e) => { $('gfs-delay-val').textContent = e.target.value; };
@@ -281,6 +275,7 @@
         provider: $('gfs-provider').value,
         model: $('gfs-model').value,
         key: $('gfs-key').value,
+        proxy: $('gfs-proxy').value,
         mode: state.mode,
         conf: $('gfs-conf').value,
         delay: $('gfs-delay').value,
@@ -295,6 +290,7 @@
       if (c.provider) { $('gfs-provider').value = c.provider; updateModels(); }
       if (c.model) $('gfs-model').value = c.model;
       if (c.key) $('gfs-key').value = c.key;
+      if (c.proxy) { $('gfs-proxy').value = c.proxy; state.proxy = c.proxy; }
       if (c.mode) document.querySelector('.gfs-mode[data-mode="' + c.mode + '"]')?.click();
       if (c.conf) { $('gfs-conf').value = c.conf; $('gfs-conf-val').textContent = c.conf + '%'; }
       if (c.delay) { $('gfs-delay').value = c.delay; $('gfs-delay-val').textContent = c.delay; }
@@ -315,41 +311,29 @@
   $('gfs-clearlog').onclick = () => { $('gfs-log').innerHTML = ''; log('Log cleared.', 'info'); };
 
   $('gfs-min').onclick = () => {
-    const body = $('gfs-body');
-    const tabs = panel.querySelector('.gfs-tabs');
-    const footer = panel.querySelector('.gfs-footer');
+    const body = $('gfs-body'), tabs = panel.querySelector('.gfs-tabs'), footer = panel.querySelector('.gfs-footer');
     const hidden = body.style.display === 'none';
     body.style.display = hidden ? '' : 'none';
     tabs.style.display = hidden ? '' : 'none';
     footer.style.display = hidden ? '' : 'none';
     $('gfs-min').textContent = hidden ? '−' : '+';
   };
-
-  $('gfs-close').onclick = () => {
-    panel.remove();
-    window.__GFS_LOADED__ = false;
-  };
+  $('gfs-close').onclick = () => { panel.remove(); window.__GFS_LOADED__ = false; };
 
   // Drag
   const hdr = $('gfs-hdr');
   let isDrag = false, ox = 0, oy = 0;
   const startDrag = (x, y) => {
     const r = panel.getBoundingClientRect();
-    isDrag = true;
-    ox = x - r.left;
-    oy = y - r.top;
-    panel.style.transform = 'none';
-    panel.style.animation = 'none';
-    panel.style.left = r.left + 'px';
-    panel.style.top = r.top + 'px';
+    isDrag = true; ox = x - r.left; oy = y - r.top;
+    panel.style.transform = 'none'; panel.style.animation = 'none';
+    panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px';
   };
   const moveDrag = (x, y) => {
     if (!isDrag) return;
     const r = panel.getBoundingClientRect();
-    const nLeft = Math.max(0, Math.min(window.innerWidth - r.width, x - ox));
-    const nTop = Math.max(0, Math.min(window.innerHeight - r.height, y - oy));
-    panel.style.left = nLeft + 'px';
-    panel.style.top = nTop + 'px';
+    panel.style.left = Math.max(0, Math.min(window.innerWidth - r.width, x - ox)) + 'px';
+    panel.style.top = Math.max(0, Math.min(window.innerHeight - r.height, y - oy)) + 'px';
   };
   const endDrag = () => { isDrag = false; };
   hdr.addEventListener('mousedown', (e) => { if (e.target.closest('button')) return; startDrag(e.clientX, e.clientY); });
@@ -359,7 +343,6 @@
   document.addEventListener('mouseup', endDrag);
   document.addEventListener('touchend', endDrag);
 
-  // Parse questions
   const parseQuestions = () => {
     const groups = document.querySelectorAll('div[role="radiogroup"], div[role="listbox"]');
     const questions = [];
@@ -367,8 +350,7 @@
       let qText = '';
       let el = g;
       for (let j = 0; j < 8; j++) {
-        el = el.parentElement;
-        if (!el) break;
+        el = el.parentElement; if (!el) break;
         const heading = el.querySelector('[role="heading"]') || el.querySelector('.M7eMe') || el.querySelector('.Qr7Oae');
         if (heading && heading.innerText && heading.innerText.trim()) { qText = heading.innerText.trim(); break; }
       }
@@ -386,7 +368,6 @@
     log('Ditemukan ' + q.length + ' pertanyaan.', 'ok');
     q.slice(0, 3).forEach((item, i) => log('Q' + (i + 1) + ': ' + (item.qText || '(no text)').slice(0, 60), 'info'));
   };
-
   $('gfs-clear').onclick = () => {
     let cleared = 0;
     document.querySelectorAll('div[role="radio"][aria-checked="true"], div[role="checkbox"][aria-checked="true"]').forEach((el) => { el.click(); cleared++; });
@@ -395,11 +376,17 @@
 
   // ─── Provider callers ───
   const callXrina = async (apiKey, model, prompt) => {
-    const url = XRINA_ENDPOINT + encodeURIComponent(prompt);
+    const rawUrl = XRINA_ENDPOINT + encodeURIComponent(prompt);
+    const proxyFn = PROXIES[state.proxy] || PROXIES.allorigins;
+    const url = proxyFn(rawUrl);
+    log('Xrina URL: ' + url.slice(0, 100) + '...', 'info');
     const res = await fetch(url, { method: 'GET' });
     if (!res.ok) throw new Error('Xrina HTTP ' + res.status);
-    const data = await res.json();
-    if (!data.status) throw new Error('Xrina status false');
+    const body = await res.text();
+    let data;
+    try { data = JSON.parse(body); }
+    catch { throw new Error('Xrina non-JSON: ' + body.slice(0, 100)); }
+    if (!data.status) throw new Error('Xrina status=false: ' + JSON.stringify(data).slice(0, 100));
     const text = data?.data?.response;
     if (typeof text !== 'string' || !text.trim()) throw new Error('Xrina empty response');
     return text;
@@ -410,10 +397,7 @@
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' },
-      }),
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } }),
     });
     if (!res.ok) throw new Error('Gemini HTTP ' + res.status);
     const data = await res.json();
@@ -424,14 +408,7 @@
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      body: JSON.stringify({
-        model, temperature: 0.2,
-        messages: [
-          { role: 'system', content: 'Answer MCQ. Output valid JSON object with "answers" array.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: 'system', content: 'Answer MCQ. Output valid JSON object with "answers" array.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' } }),
     });
     if (!res.ok) throw new Error('OpenAI HTTP ' + res.status);
     const data = await res.json();
@@ -442,21 +419,13 @@
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      body: JSON.stringify({
-        model, temperature: 0.2,
-        messages: [
-          { role: 'system', content: 'Answer MCQ. Output valid JSON object with "answers" array.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify({ model, temperature: 0.2, messages: [{ role: 'system', content: 'Answer MCQ. Output valid JSON object with "answers" array.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' } }),
     });
     if (!res.ok) throw new Error('Groq HTTP ' + res.status);
     const data = await res.json();
     return data.choices[0].message.content;
   };
 
-  // ─── Parse AI response ───
   const parseAIResponse = (raw) => {
     let data;
     try { data = JSON.parse(raw); }
@@ -482,7 +451,6 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // ─── Solve ───
   $('gfs-solve').onclick = async () => {
     if (state.running) return;
     const key = $('gfs-key').value.trim();
@@ -491,8 +459,7 @@
     const threshold = parseInt($('gfs-conf').value) / 100;
     const delay = parseInt($('gfs-delay').value);
     const retryN = parseInt($('gfs-retry').value);
-
-    if (provider !== 'xrina' && !key) return log('API key kosong. Cek tab Settings.', 'err');
+    if (provider !== 'xrina' && !key) return log('API key kosong.', 'err');
 
     const questions = parseQuestions();
     if (!questions.length) return log('Nggak ada pertanyaan.', 'err');
@@ -510,18 +477,13 @@
     prog.classList.add('active');
     progFill.style.width = '0%';
 
-    log('[' + provider + '] Parse ' + questions.length + ' soal.', 'info');
+    log('[' + provider + '/' + state.proxy + '] Parse ' + questions.length + ' soal.', 'info');
 
-    // Prompt yang minta JSON output
     const prompt =
       'Kamu asisten ujian. Jawab pertanyaan pilihan ganda berikut.\n' +
-      'BALAS HANYA dengan JSON object tanpa markdown, tanpa teks lain:\n' +
+      'BALAS HANYA dengan JSON object tanpa markdown:\n' +
       '{"answers":[{"idx":0,"answer":"<teks opsi PERSIS>","confidence":0.9}]}\n\n' +
-      'Aturan:\n' +
-      '- Single choice: 1 jawaban\n' +
-      '- Multi choice (checkbox): 1-2 jawaban paling tepat\n' +
-      '- "answer" harus SAMA PERSIS dengan teks opsi\n' +
-      '- "confidence" = 0 sampai 1\n\n' +
+      'Aturan:\n- Single: 1 jawaban\n- Multi (checkbox): 1-2 jawaban\n- "answer" PERSIS sama dengan opsi\n- "confidence" 0-1\n\n' +
       'PERTANYAAN:\n' +
       questions.map((q, i) => '[Q' + i + '] (' + q.type + ') ' + q.qText + '\nOPSI:\n' + q.opts.map((o) => '  - ' + o.text).join('\n')).join('\n\n');
 
@@ -554,18 +516,14 @@
         progFill.style.width = Math.round(((i + 1) / answers.length) * 100) + '%';
         const q = questions[a.idx];
         if (!q) continue;
-
         if (a.confidence < threshold) {
-          log('Q' + a.idx + ' ⚠ skip (conf ' + (a.confidence * 100).toFixed(0) + '% < ' + (threshold * 100) + '%)', 'warn');
+          log('Q' + a.idx + ' ⚠ skip (conf ' + (a.confidence * 100).toFixed(0) + '%)', 'warn');
           state.stats.fail++;
           continue;
         }
-
-        const target =
-          q.opts.find((o) => o.text === a.answer) ||
-          q.opts.find((o) => o.text.toLowerCase() === a.answer.toLowerCase()) ||
-          q.opts.find((o) => o.text.includes(a.answer) || a.answer.includes(o.text));
-
+        const target = q.opts.find((o) => o.text === a.answer) ||
+                       q.opts.find((o) => o.text.toLowerCase() === a.answer.toLowerCase()) ||
+                       q.opts.find((o) => o.text.includes(a.answer) || a.answer.includes(o.text));
         if (target) {
           target.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           await sleep(80);
@@ -586,12 +544,12 @@
       const elapsed = Math.round((Date.now() - state.startTime) / 1000);
       $('gfs-score').classList.add('active');
       $('gfs-score-v').textContent = pct + '% · ' + grade;
-      $('gfs-score-d').textContent = state.stats.ok + '/' + state.stats.total + ' soal terisi · threshold ' + (threshold * 100) + '%';
+      $('gfs-score-d').textContent = state.stats.ok + '/' + state.stats.total + ' soal terisi';
       $('gfs-stat-ok').textContent = state.stats.ok;
       $('gfs-stat-fail').textContent = state.stats.fail;
       $('gfs-stat-time').textContent = elapsed + 's';
       setFooter('done · ' + pct + '%');
-      log('SELESAI. ' + state.stats.ok + '/' + state.stats.total + ' terisi dalam ' + elapsed + 's.', 'ok');
+      log('SELESAI. ' + state.stats.ok + '/' + state.stats.total + ' terisi.', 'ok');
     } catch (e) {
       log('ERROR: ' + e.message, 'err');
       setFooter('error');
@@ -603,13 +561,13 @@
     }
   };
 
-  // Auto-load saved config
   try {
     const c = JSON.parse(localStorage.getItem('gfs_config') || '{}');
     if (c.provider) { $('gfs-provider').value = c.provider; updateModels(); }
     if (c.model) $('gfs-model').value = c.model;
     if (c.key) $('gfs-key').value = c.key;
+    if (c.proxy) { $('gfs-proxy').value = c.proxy; state.proxy = c.proxy; }
   } catch (e) {}
 
-  log('GFS PRO aktif. Provider default: Xrina (gratis, no key).', 'ok');
+  log('GFS PRO v2.2 aktif. Xrina + AllOrigins proxy ready.', 'ok');
 })();
