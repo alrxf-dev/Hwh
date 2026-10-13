@@ -1,4 +1,4 @@
-/* GFS AI Solver PRO v9 — by Alip Lab */
+/* GFS AI Solver PRO v10 — by Alip Lab */
 (function () {
   if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); document.getElementById('gfs-stealth-btn')?.remove(); window.__GFS_LOADED__ = false; return; }
   window.__GFS_LOADED__ = true;
@@ -9,7 +9,7 @@
     anabot: 'freeApikey'
   };
   const state = { running: false, stealth: false };
-  const BATCH_SIZE = { groq: 6, openrouter: 6, openai: 6, andisearch: 1, ayesoul: 1 };
+  const BATCH_SIZE = { groq: 6, openrouter: 6, openai: 6, andisearch: 4, ayesoul: 4 };
 
   const MODELS = {
     groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
@@ -23,7 +23,7 @@
     ayesoul: ['Ayesoul']
   };
 
-  const CSS = `#gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;max-width:94vw;background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);color:#e2e8f0;border:1px solid #1e293b;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.85);z-index:2147483647;font-family:-apple-system,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:90vh;overflow:hidden}@keyframes gfsPulse{0%,100%{opacity:1}50%{opacity:.4}}@keyframes gfsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes gfsFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}#gfs-panel *{box-sizing:border-box}#gfs-panel::-webkit-scrollbar{width:6px}#gfs-panel::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.gfs-hdr{padding:14px 16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}.gfs-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none}.gfs-logo{width:26px;height:26px;background:rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}.gfs-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:gfsPulse 2s infinite}.gfs-status.busy{background:#facc15;animation:gfsSpin 1s linear infinite}.gfs-hdr-btns{display:flex;gap:6px}.gfs-hdr button{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:600}.gfs-tabs{display:flex;background:#0b1220;border-bottom:1px solid #1e293b;padding:4px 6px 0;flex-shrink:0}.gfs-tab{flex:1;padding:10px 6px;background:none;border:none;color:#64748b;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;text-transform:uppercase;transition:all .15s;border-radius:6px 6px 0 0}.gfs-tab.active{color:#a5b4fc;border-bottom-color:#6366f1;background:rgba(99,102,241,.08)}.gfs-body{padding:16px;overflow-y:auto;flex:1;min-height:0}.gfs-tab-panel{display:none;animation:gfsFade .25s}.gfs-tab-panel.active{display:block}.gfs-row{margin-bottom:12px}.gfs-lbl{display:block;font-size:10px;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;font-weight:700;letter-spacing:.6px}.gfs-hint{font-size:9.5px;color:#475569;text-transform:none;float:right}.gfs-input,.gfs-select{width:100%;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none}.gfs-input:focus,.gfs-select:focus{border-color:#6366f1}.gfs-input-wrap{position:relative}.gfs-input-wrap .gfs-input{padding-right:44px}.gfs-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:6px 10px;font-size:14px}.gfs-btn{width:100%;padding:12px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}.gfs-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(99,102,241,.4)}.gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}.gfs-btn-sec{background:#1e293b;color:#cbd5e1;border:1px solid #334155}.gfs-btn-danger{background:rgba(69,10,10,.6);color:#fca5a5;border:1px solid #7f1d1d}.gfs-btn-stealth{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;border:1px solid #334155}.gfs-btn-sm{padding:8px 12px;font-size:11.5px}.gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gfs-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.gfs-progress{height:5px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:10px;display:none}.gfs-progress.active{display:block}.gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .3s;width:0%}.gfs-score{margin-top:14px;padding:16px;background:rgba(30,41,59,.9);border-radius:12px;border-left:4px solid #6366f1;display:none}.gfs-score.active{display:block}.gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;font-weight:700}.gfs-score-v{font-size:34px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px}.gfs-log{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px;font-family:monospace;font-size:10.5px;height:220px;overflow-y:auto;color:#94a3b8;line-height:1.65}.gfs-log div{margin-bottom:2px;word-break:break-word}.gfs-log .ok{color:#4ade80}.gfs-log .err{color:#f87171}.gfs-log .info{color:#60a5fa}.gfs-log .warn{color:#fbbf24}.gfs-footer{padding:10px 16px;background:#0a0f1c;border-top:1px solid #1e293b;font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;flex-shrink:0}.gfs-badge{padding:3px 8px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:600}.gfs-badge.busy{background:#78350f;color:#fbbf24}.gfs-badge.error{background:#450a0a;color:#fca5a5}.gfs-badge.done{background:#14532d;color:#86efac}.gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:10px 12px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:0 6px 6px 0}.gfs-tip b{color:#a5b4fc}.gfs-expl-list{max-height:340px;overflow-y:auto;background:#020617;border:1px solid #1e293b;border-radius:10px;padding:10px}.gfs-expl-item{padding:10px;margin-bottom:8px;background:rgba(30,41,59,.5);border-radius:8px;border-left:3px solid #6366f1}.gfs-expl-num{font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px;text-transform:uppercase}.gfs-expl-ans{font-size:11.5px;color:#86efac;font-weight:600;margin-bottom:4px}.gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.55}.gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:4px}.gfs-toggle{position:relative;display:inline-block;width:36px;height:20px}.gfs-toggle input{opacity:0;width:0;height:0}.gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:20px}.gfs-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}input:checked + .gfs-slider{background:#6366f1}input:checked + .gfs-slider:before{transform:translateX(16px)}#gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,.5);z-index:2147483646;font-weight:700}#gfs-stealth-btn.active{display:flex}.gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;margin-bottom:8px}.gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:600}.gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}.gfs-credit{font-size:9px;color:#475569;font-family:monospace}`;
+  const CSS = `#gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;max-width:94vw;background:linear-gradient(180deg,#0b1220 0%,#0f172a 100%);color:#e2e8f0;border:1px solid #1e293b;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.85);z-index:2147483647;font-family:-apple-system,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden}@keyframes gfsPulse{0%,100%{opacity:1}50%{opacity:.4}}@keyframes gfsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes gfsFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}#gfs-panel *{box-sizing:border-box}#gfs-panel::-webkit-scrollbar{width:6px}#gfs-panel::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}.gfs-hdr{padding:14px 16px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px;color:#fff;flex-shrink:0}.gfs-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none}.gfs-logo{width:26px;height:26px;background:rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}.gfs-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:gfsPulse 2s infinite}.gfs-status.busy{background:#facc15;animation:gfsSpin 1s linear infinite}.gfs-hdr-btns{display:flex;gap:6px}.gfs-hdr button{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;font-weight:600}.gfs-tabs{display:flex;background:#0b1220;border-bottom:1px solid #1e293b;padding:4px 6px 0;flex-shrink:0}.gfs-tab{flex:1;padding:10px 6px;background:none;border:none;color:#64748b;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;text-transform:uppercase;transition:all .15s;border-radius:6px 6px 0 0}.gfs-tab.active{color:#a5b4fc;border-bottom-color:#6366f1;background:rgba(99,102,241,.08)}.gfs-body{padding:16px;overflow-y:auto;flex:1;min-height:0}.gfs-tab-panel{display:none;animation:gfsFade .25s}.gfs-tab-panel.active{display:block}.gfs-row{margin-bottom:12px}.gfs-lbl{display:block;font-size:10px;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;font-weight:700;letter-spacing:.6px}.gfs-hint{font-size:9.5px;color:#475569;text-transform:none;float:right}.gfs-input,.gfs-select{width:100%;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none}.gfs-input:focus,.gfs-select:focus{border-color:#6366f1}.gfs-input-wrap{position:relative}.gfs-input-wrap .gfs-input{padding-right:44px}.gfs-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:6px 10px;font-size:14px}.gfs-btn{width:100%;padding:12px;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}.gfs-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 6px 20px rgba(99,102,241,.4)}.gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}.gfs-btn-sec{background:#1e293b;color:#cbd5e1;border:1px solid #334155}.gfs-btn-danger{background:rgba(69,10,10,.6);color:#fca5a5;border:1px solid #7f1d1d}.gfs-btn-stealth{background:linear-gradient(135deg,#0f172a,#1e293b);color:#94a3b8;border:1px solid #334155}.gfs-btn-sm{padding:8px 12px;font-size:11.5px}.gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gfs-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.gfs-progress{height:5px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:10px;display:none}.gfs-progress.active{display:block}.gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .3s;width:0%}.gfs-score{margin-top:14px;padding:16px;background:rgba(30,41,59,.9);border-radius:12px;border-left:4px solid #6366f1;display:none}.gfs-score.active{display:block}.gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;font-weight:700}.gfs-score-v{font-size:34px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px}.gfs-log{background:#020617;border:1px solid #1e293b;border-radius:10px;padding:12px;font-family:monospace;font-size:10.5px;height:280px;overflow-y:auto;color:#94a3b8;line-height:1.65}.gfs-log div{margin-bottom:2px;word-break:break-word}.gfs-log .ok{color:#4ade80}.gfs-log .err{color:#f87171}.gfs-log .info{color:#60a5fa}.gfs-log .warn{color:#fbbf24}.gfs-footer{padding:10px 16px;background:#0a0f1c;border-top:1px solid #1e293b;font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;flex-shrink:0}.gfs-badge{padding:3px 8px;background:#1e293b;border-radius:6px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:600}.gfs-badge.busy{background:#78350f;color:#fbbf24}.gfs-badge.error{background:#450a0a;color:#fca5a5}.gfs-badge.done{background:#14532d;color:#86efac}.gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:10px 12px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:0 6px 6px 0}.gfs-tip b{color:#a5b4fc}.gfs-expl-list{max-height:340px;overflow-y:auto;background:#020617;border:1px solid #1e293b;border-radius:10px;padding:10px}.gfs-expl-item{padding:10px;margin-bottom:8px;background:rgba(30,41,59,.5);border-radius:8px;border-left:3px solid #6366f1}.gfs-expl-num{font-size:10px;color:#64748b;font-weight:700;margin-bottom:4px;text-transform:uppercase}.gfs-expl-ans{font-size:11.5px;color:#86efac;font-weight:600;margin-bottom:4px}.gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.55}.gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:4px}.gfs-toggle{position:relative;display:inline-block;width:36px;height:20px}.gfs-toggle input{opacity:0;width:0;height:0}.gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:20px}.gfs-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}input:checked + .gfs-slider{background:#6366f1}input:checked + .gfs-slider:before{transform:translateX(16px)}#gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,.5);z-index:2147483646;font-weight:700}#gfs-stealth-btn.active{display:flex}.gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220;border:1px solid #334155;border-radius:9px;margin-bottom:8px}.gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:600}.gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}`;
 
   const styleEl = document.createElement('style');
   styleEl.textContent = CSS;
@@ -39,7 +39,7 @@
   panel.id = 'gfs-panel';
   panel.innerHTML = `
     <div class="gfs-hdr" id="gfs-hdr">
-      <div class="gfs-hdr-title"><div class="gfs-logo">⚡</div><span>GFS v9</span><span class="gfs-status" id="gfs-status"></span></div>
+      <div class="gfs-hdr-title"><div class="gfs-logo">⚡</div><span>GFS v10</span><span class="gfs-status" id="gfs-status"></span></div>
       <div class="gfs-hdr-btns"><button id="gfs-min">−</button><button id="gfs-stealth">👻</button><button id="gfs-close">×</button></div>
     </div>
     <div class="gfs-tabs">
@@ -64,7 +64,7 @@
         <div class="gfs-expl-list" id="gfs-expl-list"><div style="color:#64748b;font-size:11px;text-align:center;padding:20px">Belum ada penjelasan.</div></div>
       </div>
       <div class="gfs-tab-panel" data-panel="settings">
-        <div class="gfs-row"><label class="gfs-lbl">Provider</label><select class="gfs-select" id="gfs-provider"><option value="groq">Groq (recommended)</option><option value="openrouter">OpenRouter</option><option value="andisearch">Andi X Cici</option><option value="ayesoul">Ayesoul</option><option value="openai">OpenAI</option></select></div>
+        <div class="gfs-row"><label class="gfs-lbl">Provider</label><select class="gfs-select" id="gfs-provider"><option value="groq">Groq (recommended)</option><option value="andisearch">Andi X Cici</option><option value="ayesoul">Ayesoul</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
         <div class="gfs-row"><label class="gfs-lbl">Model</label><select class="gfs-select" id="gfs-model"></select></div>
         <div class="gfs-row" id="gfs-key-row"><label class="gfs-lbl">API Key <span class="gfs-hint" id="gfs-key-hint">auto</span></label><div class="gfs-input-wrap"><input class="gfs-input" id="gfs-key" type="password" autocomplete="off"><button class="gfs-eye" id="gfs-eye">👁</button></div></div>
         <div class="gfs-row">
@@ -98,7 +98,7 @@
     d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
     el.appendChild(d);
     el.scrollTop = el.scrollHeight;
-    while (el.children.length > 300) el.removeChild(el.firstChild);
+    while (el.children.length > 500) el.removeChild(el.firstChild);
   };
   const setStatus = (txt) => { const b = $('gfs-footer-stat'); b.textContent = txt; b.className = 'gfs-badge'; if (txt === 'running') b.classList.add('busy'); else if (txt === 'error') b.classList.add('error'); else if (txt === 'done') b.classList.add('done'); };
 
@@ -112,6 +112,7 @@
     const sel = $('gfs-model'); sel.innerHTML = '';
     (MODELS[p] || []).forEach((m) => { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
     if (HARDCODED_KEYS[p]) { $('gfs-key').value = HARDCODED_KEYS[p]; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'auto'; }
+    else if (p === 'andisearch' || p === 'ayesoul') { $('gfs-key').value = 'freeApikey'; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'free'; }
     else { $('gfs-key').value = ''; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'manual'; }
     const bs = BATCH_SIZE[p] || 6;
     $('gfs-tip').textContent = p + ' · ' + sel.value + ' · batch ' + bs;
@@ -192,23 +193,20 @@
     return data.choices[0].message.content;
   };
 
-  // ─── ANDI X CICI (AndiSearch) — single question ───
+  // ─── ANDI X CICI — batching ───
   const callAndiSearch = async (key, model, prompt) => {
     const url = 'https://anabot.my.id/api/ai/andisearch?prompt=' + encodeURIComponent(prompt) + '&apikey=' + encodeURIComponent(key);
     const res = await fetch(url, { method: 'GET', headers: { 'accept': 'application/json' } });
     if (!res.ok) throw new Error('AndiSearch ' + res.status);
     const data = await res.json();
-    if (!data.success) throw new Error('AndiSearch fail');
+    if (!data.success) throw new Error('AndiSearch fail: ' + JSON.stringify(data).slice(0, 100));
     const text = data?.data?.result?.chat || '';
     if (!text) throw new Error('AndiSearch empty');
-    // Extract jawaban
-    const m = text.match(/JAWABAN\s*:\s*(.+?)(?:\n|$)/i);
-    if (m) return JSON.stringify({ answers: [{ i: 0, a: m[1].trim() }] });
-    // Fallback: match dengan opsi
-    return JSON.stringify({ answers: [{ i: 0, a: text.slice(0, 200) }] });
+    log('AndiSearch raw: ' + text.slice(0, 200), 'warn');
+    return text;
   };
 
-  // ─── AYESOUL — single question ───
+  // ─── AYESOUL — batching ───
   const callAyesoul = async (key, model, prompt) => {
     const res = await fetch('https://anabot.my.id/api/ai/ayesoul', {
       method: 'POST',
@@ -217,12 +215,11 @@
     });
     if (!res.ok) throw new Error('Ayesoul ' + res.status);
     const data = await res.json();
-    if (!data.success) throw new Error('Ayesoul fail');
+    if (!data.success) throw new Error('Ayesoul fail: ' + JSON.stringify(data).slice(0, 100));
     const text = data?.data?.result?.stream || '';
     if (!text) throw new Error('Ayesoul empty');
-    const m = text.match(/JAWABAN\s*:\s*(.+?)(?:\n|$)/i);
-    if (m) return JSON.stringify({ answers: [{ i: 0, a: m[1].trim() }] });
-    return JSON.stringify({ answers: [{ i: 0, a: text.slice(0, 200) }] });
+    log('Ayesoul raw: ' + text.slice(0, 200), 'warn');
+    return text;
   };
 
   // ─── PARSER ───
@@ -252,7 +249,6 @@
   const findOption = (q, aiAnswer) => {
     const raw = String(aiAnswer || '').trim();
     if (!raw) return { el: null, reason: 'empty' };
-    // Cari exact
     let m = q.opts.find(o => o.text === raw);
     if (m) return { el: m.el, reason: 'exact' };
     const stripped = raw.replace(/^\s*[A-Za-z0-9][.)\-:]\s*/, '').trim();
@@ -261,14 +257,12 @@
     m = q.opts.find(o => normalize(o.text) === nRaw);
     if (m) return { el: m.el, reason: 'normal' };
     if (nStrip !== nRaw) { m = q.opts.find(o => normalize(o.text) === nStrip); if (m) return { el: m.el, reason: 'normal-strip' }; }
-    // Contains — strict
     const cands = q.opts.filter(o => { const no = normalize(o.text); return no.length > 0 && nStrip.length >= no.length * 0.5 && (no.includes(nStrip) || nStrip.includes(no)); });
     if (cands.length === 1) return { el: cands[0].el, reason: 'contains-1' };
     if (cands.length > 1) {
       cands.sort((a, b) => { const oa = normalize(a.text), ob = normalize(b.text); const sA = oa.includes(nStrip) ? nStrip.length / oa.length : oa.length / nStrip.length; const sB = ob.includes(nStrip) ? nStrip.length / ob.length : ob.length / nStrip.length; return sB - sA; });
       return { el: cands[0].el, reason: 'contains-best(' + cands.length + ')' };
     }
-    // Substring key — match kalau opsi cuma 2-3 kata unik dari AI
     for (const opt of q.opts) {
       const no = normalize(opt.text);
       const words = no.split(' ').filter(w => w.length > 3);
@@ -324,22 +318,13 @@
       for (let b = 0; b < totalBatches; b++) {
         const start = b * bs;
         const batch = questions.slice(start, start + bs);
-        log('══ Batch ' + (b + 1) + '/' + totalBatches + ' ══', 'info');
+        log('══ Batch ' + (b + 1) + '/' + totalBatches + ' (Q' + (start + 1) + '-' + (start + batch.length) + ') ══', 'info');
 
-        let batchPrompt;
-        if (bs === 1) {
-          // Single question for AndiSearch / Ayesoul
-          const q = batch[0];
-          batchPrompt = 'Jawab soal pilihan ganda berikut dengan TEPAT.\n\n' +
-            'SOAL: ' + q.qText + '\n\n' +
-            'PILIHAN:\n' + q.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\n' +
-            'Format jawaban WAJIB:\nJAWABAN: <teks opsi PERSIS sama kayak di soal>';
-        } else {
-          batchPrompt = 'Jawab soal pilihan ganda berikut. Untuk setiap soal, pilih opsi PALING TEPAT.\n' +
-            'Balas HANYA JSON object:\n{"answers":[{"i":0,"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan>"' : '') + '}]}\n\n' +
-            'PENTING: "a" harus SAMA PERSIS dengan salah satu opsi.\n\n' +
-            batch.map((q, i) => '[' + (start + i) + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
-        }
+        const batchPrompt = 'Jawab soal pilihan ganda berikut. Untuk setiap soal pilih opsi PALING TEPAT.\n' +
+          'BALAS HANYA dengan JSON object, tidak ada teks lain:\n' +
+          '{"answers":[{"i":' + start + ',"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan>"' : '') + '}]}\n\n' +
+          'ATURAN: "i" = nomor soal (mulai dari ' + start + '). "a" = teks opsi SAMA PERSIS.\n\n' +
+          'SOAL:\n' + batch.map((q, i) => '[' + (start + i) + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
 
         let raw;
         try {
@@ -348,24 +333,39 @@
           else if (provider === 'andisearch') raw = await callAndiSearch(key, model, batchPrompt);
           else if (provider === 'ayesoul') raw = await callAyesoul(key, model, batchPrompt);
           else raw = await callOpenAI(key, model, batchPrompt);
-          log('Batch ' + (b + 1) + ' response: ' + raw.length + ' chars', 'ok');
+          log('Batch ' + (b + 1) + ' response (' + raw.length + ' chars)', 'ok');
         } catch (e) {
           log('Batch ' + (b + 1) + ' gagal: ' + e.message, 'err');
-          await sleep(1000);
+          await sleep(1500);
           continue;
         }
 
+        let answers = [];
         try {
-          let answers = parseResponse(raw);
-          // Kalau provider single-question, offset idx-nya
-          if (bs === 1 && answers.length === 1) {
-            answers[0].idx = start;
+          answers = parseResponse(raw);
+          log('Batch ' + (b + 1) + ' JSON parsed: ' + answers.length + ' jawaban', 'ok');
+        } catch (jsonErr) {
+          log('JSON parse fail, coba text extract: ' + jsonErr.message, 'warn');
+          const ja = raw.match(/JAWABAN\s*[:=]\s*(.+?)(?:\n|$)/i) || raw.match(/answer["\s:]+(.+?)(?:\n|")/i);
+          if (ja && ja[1]) {
+            answers = [{ idx: start, answer: ja[1].trim().slice(0, 200), confidence: 0.7, reason: 'text-extract' }];
+            log('Text extract: ' + ja[1].trim().slice(0, 60), 'warn');
+          } else {
+            for (let qi = 0; qi < batch.length; qi++) {
+              const q = batch[qi];
+              const found = q.opts.find(o => raw.toLowerCase().includes(o.text.toLowerCase().slice(0, 20)));
+              if (found) {
+                answers.push({ idx: start + qi, answer: found.text, confidence: 0.6, reason: 'substring-match' });
+                log('Substring match Q' + (start + qi) + ': ' + found.text.slice(0, 40), 'warn');
+              }
+            }
           }
-          log('Batch ' + (b + 1) + ' → ' + answers.length + ' jawaban', 'ok');
+        }
+
+        if (answers.length === 0) {
+          log('Batch ' + (b + 1) + ' TIDAK ada jawaban valid. Raw: ' + raw.slice(0, 150), 'err');
+        } else {
           answers.forEach(a => allAnswers.push(a));
-        } catch (e) {
-          log('Batch ' + (b + 1) + ' parse gagal: ' + e.message, 'warn');
-          log('Raw: ' + raw.slice(0, 120), 'warn');
         }
 
         await sleep(bs === 1 ? 1500 : 800);
@@ -377,17 +377,21 @@
       for (let i = 0; i < allAnswers.length; i++) {
         const a = allAnswers[i];
         $('gfs-progress-fill').style.width = Math.round(((i + 1) / allAnswers.length) * 100) + '%';
-        const q = questions[a.idx]; if (!q) continue;
+        const q = questions[a.idx];
+        if (!q) { log('Q' + a.idx + ' ⚠ question not found', 'warn'); continue; }
         const mt = findOption(q, a.answer);
         allMatches[a.idx] = mt;
+        log('Q' + a.idx + ' → AI: "' + a.answer.slice(0, 50) + '" · match: ' + mt.reason, 'info');
         if (mt.el) {
           if ($('gfs-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          await sleep(100); mt.el.click();
+          await sleep(100);
+          mt.el.click();
           clicked++; totalConf += a.confidence;
-          log('Q' + a.idx + ' ✓ ' + a.answer.slice(0, 40) + ' [' + mt.reason + ']', 'ok');
+          log('  ✓ CLICKED', 'ok');
         } else {
           skipped++;
-          log('Q' + a.idx + ' ✗ NO MATCH: "' + a.answer.slice(0, 60) + '"', 'err');
+          log('  ✗ NO MATCH — pilihan yang tersedia:', 'err');
+          q.opts.forEach(o => log('    · ' + o.text.slice(0, 70), 'err'));
         }
         await sleep(150);
       }
@@ -417,5 +421,5 @@
 
   $('gfs-provider').value = 'groq';
   updateModels();
-  log('GFS v9 by Alip Lab. Andi X Cici + Ayesoul added.', 'ok');
+  log('GFS v10 by Alip Lab. Batch 4 + debug kuat.', 'ok');
 })();
