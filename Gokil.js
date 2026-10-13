@@ -1,7 +1,12 @@
-/* GFS AI Solver PRO - Groq/OpenRouter/DeepSeek/OpenAI/Xrina */
+/* GFS AI Solver PRO - Groq updated models */
 (function () {
   if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); window.__GFS_LOADED__ = false; return; }
   window.__GFS_LOADED__ = true;
+
+  const HARDCODED_KEYS = {
+    groq: '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',
+    deepseek: 'sk-e6854e0ed9d34110be839eb7e68ca998'
+  };
 
   const state = { running: false };
   const PROXIES = {
@@ -10,9 +15,9 @@
     none: (u) => u
   };
   const MODELS = {
-    groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
-    openrouter: ['deepseek/deepseek-chat:free', 'google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.3-70b-instruct:free', 'meta-llama/llama-3.2-3b-instruct:free', 'microsoft/phi-3-mini-128k-instruct:free', 'qwen/qwen-2.5-72b-instruct:free'],
+    groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b', 'allam-2-7b'],
     deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+    openrouter: ['deepseek/deepseek-chat:free', 'google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen-2.5-72b-instruct:free'],
     openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
     xrina: ['Gemini AI']
   };
@@ -25,7 +30,7 @@
 
   const panel = document.createElement('div');
   panel.id = 'gfs-panel';
-  panel.innerHTML = `<div class="gfs-hdr" id="gfs-hdr"><span>GFS AI Solver</span><div style="display:flex;gap:6px"><button id="gfs-min">−</button><button id="gfs-close">×</button></div></div><div class="gfs-tabs"><button class="gfs-tab active" data-tab="solve">Solve</button><button class="gfs-tab" data-tab="settings">Settings</button><button class="gfs-tab" data-tab="log">Log</button></div><div class="gfs-body" id="gfs-body"><div class="gfs-tab-panel active" data-panel="solve"><div class="gfs-row"><button class="gfs-btn gfs-btn-main" id="gfs-solve">NYELESAIN SOAL</button></div><div class="gfs-progress" id="gfs-progress"><div class="gfs-progress-fill" id="gfs-progress-fill"></div></div><div class="gfs-row-2" style="margin-top:12px"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-parse">CEK SOAL</button><button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clear">CLEAR</button></div><div class="gfs-score" id="gfs-score"><div class="gfs-score-h">Prediksi Nilai</div><div class="gfs-score-v" id="gfs-score-v">-</div><div class="gfs-score-d" id="gfs-score-d"></div></div></div><div class="gfs-tab-panel" data-panel="settings"><div class="gfs-row"><label class="gfs-lbl">Provider</label><select class="gfs-select" id="gfs-provider"><option value="groq">Groq (recommended)</option><option value="openrouter">OpenRouter</option><option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option><option value="xrina">Xrina (no key)</option></select></div><div class="gfs-row" id="gfs-proxy-row" style="display:none"><label class="gfs-lbl">CORS Proxy</label><select class="gfs-select" id="gfs-proxy"><option value="allorigins">AllOrigins</option><option value="codetabs">CodeTabs</option><option value="none">None</option></select></div><div class="gfs-row"><label class="gfs-lbl">Model</label><select class="gfs-select" id="gfs-model"></select></div><div class="gfs-row" id="gfs-key-row"><label class="gfs-lbl">API Key</label><input class="gfs-input" id="gfs-key" type="password" placeholder="Paste API key" autocomplete="off"></div><div class="gfs-row-2"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-save">SAVE</button><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-load">LOAD</button></div></div><div class="gfs-tab-panel" data-panel="log"><div class="gfs-row-2"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-export">EXPORT</button><button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clearlog">CLEAR LOG</button></div><div class="gfs-log" id="gfs-log"><div>Ready.</div></div></div></div><div class="gfs-footer"><span>GFS PRO</span><span id="gfs-footer-stat">idle</span></div>`;
+  panel.innerHTML = `<div class="gfs-hdr" id="gfs-hdr"><span>GFS AI Solver</span><div style="display:flex;gap:6px"><button id="gfs-min">−</button><button id="gfs-close">×</button></div></div><div class="gfs-tabs"><button class="gfs-tab active" data-tab="solve">Solve</button><button class="gfs-tab" data-tab="settings">Settings</button><button class="gfs-tab" data-tab="log">Log</button></div><div class="gfs-body" id="gfs-body"><div class="gfs-tab-panel active" data-panel="solve"><div class="gfs-row"><button class="gfs-btn gfs-btn-main" id="gfs-solve">NYELESAIN SOAL</button></div><div class="gfs-progress" id="gfs-progress"><div class="gfs-progress-fill" id="gfs-progress-fill"></div></div><div class="gfs-row-2" style="margin-top:12px"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-parse">CEK SOAL</button><button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clear">CLEAR</button></div><div class="gfs-score" id="gfs-score"><div class="gfs-score-h">Prediksi Nilai</div><div class="gfs-score-v" id="gfs-score-v">-</div><div class="gfs-score-d" id="gfs-score-d"></div></div></div><div class="gfs-tab-panel" data-panel="settings"><div class="gfs-row"><label class="gfs-lbl">Provider</label><select class="gfs-select" id="gfs-provider"><option value="groq">Groq</option><option value="deepseek">DeepSeek</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option><option value="xrina">Xrina (no key)</option></select></div><div class="gfs-row" id="gfs-proxy-row" style="display:none"><label class="gfs-lbl">CORS Proxy</label><select class="gfs-select" id="gfs-proxy"><option value="allorigins">AllOrigins</option><option value="codetabs">CodeTabs</option><option value="none">None</option></select></div><div class="gfs-row"><label class="gfs-lbl">Model</label><select class="gfs-select" id="gfs-model"></select></div><div class="gfs-row" id="gfs-key-row"><label class="gfs-lbl">API Key (auto)</label><input class="gfs-input" id="gfs-key" type="password" placeholder="Paste API key" autocomplete="off"></div><div class="gfs-row-2"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-save">SAVE</button><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-load">LOAD</button></div></div><div class="gfs-tab-panel" data-panel="log"><div class="gfs-row-2"><button class="gfs-btn gfs-btn-sec gfs-btn-sm" id="gfs-export">EXPORT</button><button class="gfs-btn gfs-btn-danger gfs-btn-sm" id="gfs-clearlog">CLEAR LOG</button></div><div class="gfs-log" id="gfs-log"><div>Ready.</div></div></div></div><div class="gfs-footer"><span>GFS PRO</span><span id="gfs-footer-stat">idle</span></div>`;
   document.body.appendChild(panel);
 
   const $ = (id) => document.getElementById(id);
@@ -59,7 +64,13 @@
       o.value = m; o.textContent = m;
       sel.appendChild(o);
     });
-    $('gfs-key-row').style.display = (p === 'xrina') ? 'none' : 'block';
+    if (HARDCODED_KEYS[p]) {
+      $('gfs-key').value = HARDCODED_KEYS[p];
+      $('gfs-key-row').style.display = 'block';
+    } else if (p === 'xrina') {
+      $('gfs-key').value = '';
+      $('gfs-key-row').style.display = 'none';
+    }
     $('gfs-proxy-row').style.display = (p === 'xrina') ? 'block' : 'none';
   };
   $('gfs-provider').onchange = updateModels;
@@ -73,7 +84,7 @@
       const c = JSON.parse(localStorage.getItem('gfs_config') || '{}');
       if (c.provider) { $('gfs-provider').value = c.provider; updateModels(); }
       if (c.model) $('gfs-model').value = c.model;
-      if (c.key) $('gfs-key').value = c.key;
+      if (c.key && !HARDCODED_KEYS[$('gfs-provider').value]) $('gfs-key').value = c.key;
       if (c.proxy) $('gfs-proxy').value = c.proxy;
       log('Config loaded.', 'ok');
     } catch (e) { log('Load gagal', 'err'); }
@@ -158,24 +169,6 @@
     return data.choices[0].message.content;
   };
 
-  const callOpenRouter = async (key, model, prompt) => {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: 'Answer MCQ. Output JSON object with "answers" array.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.2
-      })
-    });
-    if (!res.ok) throw new Error('OpenRouter ' + res.status + ': ' + (await res.text()).slice(0, 150));
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-
   const callDeepSeek = async (key, model, prompt) => {
     const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
@@ -190,6 +183,24 @@
       })
     });
     if (!res.ok) throw new Error('DeepSeek ' + res.status + ': ' + (await res.text()).slice(0, 150));
+    const data = await res.json();
+    return data.choices[0].message.content;
+  };
+
+  const callOpenRouter = async (key, model, prompt) => {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: 'Answer MCQ. Output JSON object with "answers" array.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2
+      })
+    });
+    if (!res.ok) throw new Error('OpenRouter ' + res.status + ': ' + (await res.text()).slice(0, 150));
     const data = await res.json();
     return data.choices[0].message.content;
   };
@@ -263,7 +274,7 @@
     btn.disabled = true;
     btn.textContent = 'Processing...';
     $('gfs-progress').classList.add('active');
-    log('Parse ' + questions.length + ' soal. Kirim ke ' + provider + '...', 'info');
+    log('Parse ' + questions.length + ' soal. Kirim ke ' + provider + ' (' + model + ')...', 'info');
 
     const prompt = 'Jawab soal pilihan ganda berikut. Balas HANYA JSON object:\n' +
       '{"answers":[{"idx":0,"answer":"<teks opsi PERSIS>","confidence":0.9}]}\n\n' +
@@ -272,8 +283,8 @@
     try {
       let raw;
       if (provider === 'groq') raw = await callGroq(key, model, prompt);
-      else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt);
       else if (provider === 'deepseek') raw = await callDeepSeek(key, model, prompt);
+      else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt);
       else if (provider === 'openai') raw = await callOpenAI(key, model, prompt);
       else raw = await callXrina(key, model, prompt);
       log('AI response OK.', 'ok');
@@ -322,14 +333,7 @@
     }
   };
 
-  try {
-    const c = JSON.parse(localStorage.getItem('gfs_config') || '{}');
-    if (c.provider) $('gfs-provider').value = c.provider;
-    updateModels();
-    if (c.model) $('gfs-model').value = c.model;
-    if (c.key) $('gfs-key').value = c.key;
-    if (c.proxy) $('gfs-proxy').value = c.proxy;
-  } catch (e) { updateModels(); }
-
-  log('GFS aktif. Pakai Groq untuk hasil stabil.', 'ok');
+  $('gfs-provider').value = 'groq';
+  updateModels();
+  log('GFS aktif. Groq key auto-filled.', 'ok');
 })();
