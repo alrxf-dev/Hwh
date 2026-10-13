@@ -1,4 +1,4 @@
-/* GFS AI Solver PRO v14 — by Alip/Alrect — Immersive UI */
+/* GFS AI Solver PRO v15 — by Alip/Alrect — + Chat AI Tab */
 (function () {
   if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); document.getElementById('gfs-stealth-btn')?.remove(); window.__GFS_LOADED__ = false; return; }
   window.__GFS_LOADED__ = true;
@@ -13,13 +13,13 @@
   };
 
   const PERSONALITY = {
-    groq: '[Persona: Groq Llama — AI super cepat buatan Groq dengan chip LPU kustom. Latency rendah, akurasi tinggi. Fokus: jawab soal pilihan ganda dengan cepat dan tepat.]',
+    groq: '[Persona: Groq Llama — AI super cepat buatan Groq dengan chip LPU kustom. Latency rendah, akurasi tinggi.]',
     openrouter: '[Persona: OpenRouter Aggregator — gateway ke berbagai model AI. Profesional, teliti, paham konteks akademik.]',
     cloudflare: '[Persona: Cloudflare Workers AI — edge AI global yang berjalan di 300+ data center. Terdistribusi, cepat, efisien.]',
     openai: '[Persona: OpenAI GPT-4o — asisten multimodal cerdas dan teliti. Prioritaskan akurasi di atas kecepatan.]'
   };
 
-  const state = { running: false, stealth: false };
+  const state = { running: false, stealth: false, chatHistory: [] };
   const BATCH_SIZE = { groq: 6, openrouter: 6, openai: 6, cloudflare: 6 };
 
   const MODELS = {
@@ -35,7 +35,6 @@
     openai: ['gpt-4o-mini', 'gpt-4o']
   };
 
-  // ─── INLINE SVG ICONS (Flaticon style) ───
   const SVG = {
     bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
     play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" fill="currentColor"/></svg>',
@@ -56,7 +55,9 @@
     rocket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
     download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
     whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>',
-    id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h4M15 12h4M9 14c-1.5 0-3 .5-3 2h6c0-1.5-1.5-2-3-2z"/></svg>'
+    id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h4M15 12h4M9 14c-1.5 0-3 .5-3 2h6c0-1.5-1.5-2-3-2z"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
   };
 
   const CSS = `
@@ -71,6 +72,7 @@
   @keyframes gfsHeart{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
   @keyframes gfsSparkle{0%{opacity:0;transform:scale(0) rotate(0)}50%{opacity:1;transform:scale(1) rotate(180deg)}100%{opacity:0;transform:scale(0) rotate(360deg)}}
   @keyframes gfsSlideIn{0%{opacity:0;transform:translateX(-8px)}100%{opacity:1;transform:translateX(0)}}
+  @keyframes gfsDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
   #gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:94vw;background:linear-gradient(160deg,#0a0f1c 0%,#0f172a 50%,#0b1220 100%);color:#e2e8f0;border:1px solid rgba(139,92,246,.25);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 0 1px rgba(139,92,246,.15),inset 0 1px 0 rgba(255,255,255,.05);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden;animation:gfsPanelIn .5s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
   #gfs-panel *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -92,9 +94,10 @@
   .gfs-hdr button:hover{background:rgba(255,255,255,.32);transform:scale(1.12) rotate(3deg);box-shadow:0 4px 14px rgba(0,0,0,.3)}
   .gfs-hdr button:active{transform:scale(.95)}
 
-  .gfs-tabs{display:flex;background:rgba(11,18,32,.6);border-bottom:1px solid rgba(139,92,246,.15);padding:6px 8px 0;flex-shrink:0;gap:2px;position:relative}
-  .gfs-tab{flex:1;padding:11px 6px;background:none;border:none;color:#64748b;font-size:10.5px;font-weight:800;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.8px;transition:all .3s cubic-bezier(.34,1.56,.64,1);border-radius:10px 10px 0 0;position:relative;display:flex;align-items:center;justify-content:center;gap:5px}
-  .gfs-tab svg{width:14px;height:14px;opacity:.7;transition:all .3s}
+  .gfs-tabs{display:flex;background:rgba(11,18,32,.6);border-bottom:1px solid rgba(139,92,246,.15);padding:6px 8px 0;flex-shrink:0;gap:2px;position:relative;overflow-x:auto}
+  .gfs-tabs::-webkit-scrollbar{display:none}
+  .gfs-tab{flex:1;min-width:60px;padding:11px 6px;background:none;border:none;color:#64748b;font-size:9.5px;font-weight:800;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.6px;transition:all .3s cubic-bezier(.34,1.56,.64,1);border-radius:10px 10px 0 0;position:relative;display:flex;align-items:center;justify-content:center;gap:4px}
+  .gfs-tab svg{width:13px;height:13px;opacity:.7;transition:all .3s}
   .gfs-tab::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%) scaleX(0);width:70%;height:2px;background:linear-gradient(90deg,transparent,#818cf8,transparent);transition:transform .3s cubic-bezier(.34,1.56,.64,1);border-radius:2px}
   .gfs-tab:hover{color:#94a3b8;background:rgba(148,163,184,.05)}
   .gfs-tab:hover svg{opacity:1;transform:scale(1.1)}
@@ -119,8 +122,6 @@
 
   .gfs-btn{width:100%;padding:13px;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .3s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden;letter-spacing:.3px}
   .gfs-btn svg{width:16px;height:16px}
-  .gfs-btn::before{content:'';position:absolute;top:50%;left:50%;width:20px;height:20px;background:rgba(255,255,255,.4);border-radius:50%;transform:translate(-50%,-50%) scale(0);pointer-events:none}
-  .gfs-btn:active::before{animation:gfsRipple .6s ease-out}
   .gfs-btn-main{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);color:#fff;box-shadow:0 8px 24px rgba(99,102,241,.45),inset 0 1px 0 rgba(255,255,255,.25);background-size:200% 100%;background-position:0 0;transition:background-position .5s,transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s}
   .gfs-btn-main:hover:not(:disabled){background-position:100% 0;transform:translateY(-2px) scale(1.01);box-shadow:0 14px 32px rgba(99,102,241,.55),inset 0 1px 0 rgba(255,255,255,.3)}
   .gfs-btn-main:active:not(:disabled){transform:translateY(0) scale(.99)}
@@ -149,8 +150,7 @@
   .gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px;position:relative;z-index:1}
 
   .gfs-log{background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:14px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;height:290px;overflow-y:auto;color:#94a3b8;line-height:1.7;box-shadow:inset 0 2px 8px rgba(0,0,0,.4);position:relative}
-  .gfs-log::before{content:'';position:absolute;top:0;left:0;right:0;height:20px;background:linear-gradient(180deg,rgba(2,6,23,.9),transparent);pointer-events:none;z-index:1}
-  .gfs-log div{margin-bottom:2px;word-break:break-word;animation:gfsSlideIn .25s ease-out;position:relative;z-index:0}
+  .gfs-log div{margin-bottom:2px;word-break:break-word;animation:gfsSlideIn .25s ease-out}
   .gfs-log .ok{color:#4ade80;text-shadow:0 0 4px rgba(74,222,128,.4)}
   .gfs-log .err{color:#f87171;text-shadow:0 0 4px rgba(248,113,113,.4)}
   .gfs-log .info{color:#60a5fa}
@@ -160,23 +160,21 @@
   .gfs-log::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
 
   .gfs-footer{padding:11px 18px;background:rgba(10,15,28,.85);border-top:1px solid rgba(30,41,59,.8);font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;backdrop-filter:blur(8px)}
-  .gfs-badge{padding:4px 10px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:7px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:700;letter-spacing:.5px;text-transform:uppercase;transition:all .3s;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+  .gfs-badge{padding:4px 10px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:7px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:700;letter-spacing:.5px;text-transform:uppercase;transition:all .3s}
   .gfs-badge.busy{background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24;animation:gfsPulse 1.5s infinite}
   .gfs-badge.error{background:linear-gradient(135deg,#450a0a,#7f1d1d);color:#fca5a5}
   .gfs-badge.done{background:linear-gradient(135deg,#14532d,#15803d);color:#86efac;box-shadow:0 0 12px rgba(74,222,128,.4)}
 
-  .gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:11px 13px;background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.05));border-left:3px solid #6366f1;border-radius:0 10px 10px 0;line-height:1.55;display:flex;align-items:center;gap:8px;transition:all .25s}
-  .gfs-tip:hover{background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));transform:translateX(2px)}
+  .gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:11px 13px;background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.05));border-left:3px solid #6366f1;border-radius:0 10px 10px 0;line-height:1.55;display:flex;align-items:center;gap:8px}
   .gfs-tip svg{width:14px;height:14px;color:#818cf8;flex-shrink:0}
 
   .gfs-expl-list{max-height:340px;overflow-y:auto;background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:12px}
-  .gfs-expl-item{padding:12px;margin-bottom:10px;background:linear-gradient(135deg,rgba(30,41,59,.6),rgba(51,65,85,.4));border-radius:11px;border-left:3px solid #6366f1;transition:all .3s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden}
-  .gfs-expl-item::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle,rgba(139,92,246,.15),transparent 70%);pointer-events:none}
-  .gfs-expl-item:hover{transform:translateY(-2px) scale(1.005);box-shadow:0 8px 24px rgba(0,0,0,.35);background:linear-gradient(135deg,rgba(30,41,59,.8),rgba(51,65,85,.6))}
+  .gfs-expl-item{padding:12px;margin-bottom:10px;background:linear-gradient(135deg,rgba(30,41,59,.6),rgba(51,65,85,.4));border-radius:11px;border-left:3px solid #6366f1;transition:all .3s}
+  .gfs-expl-item:hover{transform:translateY(-2px) scale(1.005);box-shadow:0 8px 24px rgba(0,0,0,.35)}
   .gfs-expl-num{font-size:10px;color:#64748b;font-weight:800;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:5px}
-  .gfs-expl-ans{font-size:12px;color:#86efac;font-weight:700;margin-bottom:5px;position:relative;z-index:1}
-  .gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.6;position:relative;z-index:1}
-  .gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:5px;font-family:monospace;position:relative;z-index:1}
+  .gfs-expl-ans{font-size:12px;color:#86efac;font-weight:700;margin-bottom:5px}
+  .gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.6}
+  .gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:5px;font-family:monospace}
 
   .gfs-toggle{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
   .gfs-toggle input{opacity:0;width:0;height:0}
@@ -190,36 +188,36 @@
   #gfs-stealth-btn.active{display:flex}
   #gfs-stealth-btn:hover{transform:scale(1.15) rotate(8deg)}
 
-  .gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:linear-gradient(135deg,rgba(11,18,32,.7),rgba(15,23,42,.6));border:1px solid rgba(51,65,85,.6);border-radius:11px;margin-bottom:9px;transition:all .25s cubic-bezier(.34,1.56,.64,1)}
-  .gfs-switch-row:hover{border-color:rgba(99,102,241,.4);transform:translateX(2px);box-shadow:0 4px 12px rgba(99,102,241,.15)}
+  .gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:linear-gradient(135deg,rgba(11,18,32,.7),rgba(15,23,42,.6));border:1px solid rgba(51,65,85,.6);border-radius:11px;margin-bottom:9px;transition:all .25s}
+  .gfs-switch-row:hover{border-color:rgba(99,102,241,.4);transform:translateX(2px)}
   .gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:700}
   .gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}
-  .gfs-persona{font-size:10px;color:#a5b4fc;margin-bottom:10px;padding:10px 12px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(99,102,241,.08));border-left:2px solid #8b5cf6;border-radius:0 10px 10px 0;line-height:1.55;font-style:italic;position:relative;transition:all .25s}
-  .gfs-persona::before{content:'✦';position:absolute;left:-9px;top:50%;transform:translateY(-50%);color:#8b5cf6;font-size:14px;text-shadow:0 0 8px #8b5cf6}
+  .gfs-persona{font-size:10px;color:#a5b4fc;margin-bottom:10px;padding:10px 12px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(99,102,241,.08));border-left:2px solid #8b5cf6;border-radius:0 10px 10px 0;line-height:1.55;font-style:italic}
 
-  /* CREDIT TAB */
-  .gfs-credit-card{background:linear-gradient(160deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border:1px solid rgba(139,92,246,.35);border-radius:16px;padding:22px;text-align:center;position:relative;overflow:hidden;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
-  .gfs-credit-card:hover{transform:perspective(800px) rotateY(3deg) rotateX(-2deg);box-shadow:0 20px 40px rgba(99,102,241,.3)}
-  .gfs-credit-card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:conic-gradient(from 0deg,transparent,rgba(139,92,246,.15),transparent 30%);animation:gfsSpin 8s linear infinite;pointer-events:none}
-  .gfs-credit-avatar{width:80px;height:80px;margin:0 auto 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(139,92,246,.5),inset 0 2px 0 rgba(255,255,255,.3);position:relative;z-index:1;animation:gfsFloat 3s ease-in-out infinite}
-  .gfs-credit-avatar svg{width:36px;height:36px;color:#fff;filter:drop-shadow(0 0 8px rgba(255,255,255,.7))}
-  .gfs-credit-name{font-size:22px;font-weight:900;background:linear-gradient(135deg,#a5b4fc,#c4b5fd,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px;position:relative;z-index:1;margin-bottom:4px}
-  .gfs-credit-role{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;font-weight:700;position:relative;z-index:1;margin-bottom:16px}
-  .gfs-credit-heart{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#94a3b8;position:relative;z-index:1;margin-bottom:18px}
-  .gfs-credit-heart svg{width:12px;height:12px;color:#ef4444;animation:gfsHeart 1.2s infinite}
-  .gfs-credit-order{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid rgba(74,222,128,.4);border-radius:12px;color:#fff;font-weight:800;cursor:pointer;text-decoration:none;transition:all .3s cubic-bezier(.34,1.56,.64,1);position:relative;z-index:1;box-shadow:0 8px 24px rgba(74,222,128,.3)}
-  .gfs-credit-order:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 14px 32px rgba(74,222,128,.5);background:linear-gradient(135deg,#166534,#15803d)}
-  .gfs-credit-order svg{width:22px;height:22px;filter:drop-shadow(0 0 6px rgba(255,255,255,.5))}
-  .gfs-credit-order-text{display:flex;flex-direction:column;align-items:flex-start;line-height:1.3}
-  .gfs-credit-order-label{font-size:9px;opacity:.8;letter-spacing:1px;font-weight:600}
-  .gfs-credit-order-num{font-size:14px;font-weight:900;letter-spacing:.5px}
-  .gfs-credit-sparkles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-  .gfs-credit-sparkles span{position:absolute;color:#fbbf24;font-size:14px;opacity:0;animation:gfsSparkle 2.5s infinite}
-  .gfs-credit-sparkles span:nth-child(1){top:15%;left:10%;animation-delay:0s}
-  .gfs-credit-sparkles span:nth-child(2){top:25%;right:12%;animation-delay:.6s}
-  .gfs-credit-sparkles span:nth-child(3){bottom:20%;left:15%;animation-delay:1.2s}
-  .gfs-credit-sparkles span:nth-child(4){bottom:30%;right:18%;animation-delay:1.8s}
-  .gfs-credit-footer{margin-top:16px;font-size:9.5px;color:#475569;text-align:center;position:relative;z-index:1;letter-spacing:.5px}
+  .gfs-chat-wrap{display:flex;flex-direction:column;height:420px;background:rgba(2,6,23,.6);border:1px solid rgba(30,41,59,.9);border-radius:14px;overflow:hidden}
+  .gfs-chat-hdr{padding:10px 14px;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border-bottom:1px solid rgba(139,92,246,.2);font-size:11px;color:#a5b4fc;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+  .gfs-chat-hdr svg{width:14px;height:14px}
+  .gfs-chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+  .gfs-chat-msgs::-webkit-scrollbar{width:5px}
+  .gfs-chat-msgs::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
+  .gfs-msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:12px;line-height:1.55;word-wrap:break-word;white-space:pre-wrap;animation:gfsTabIn .3s ease-out}
+  .gfs-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 4px 12px rgba(99,102,241,.3)}
+  .gfs-msg.ai{align-self:flex-start;background:linear-gradient(135deg,rgba(30,41,59,.95),rgba(51,65,85,.85));color:#e2e8f0;border-bottom-left-radius:4px;border:1px solid rgba(139,92,246,.2)}
+  .gfs-msg.err{align-self:flex-start;background:linear-gradient(135deg,rgba(69,10,10,.9),rgba(127,29,29,.7));color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  .gfs-msg-dot{display:inline-flex;gap:3px;padding:4px 0}
+  .gfs-msg-dot span{width:6px;height:6px;border-radius:50%;background:#a5b4fc;animation:gfsDot 1.2s infinite}
+  .gfs-msg-dot span:nth-child(2){animation-delay:.2s}
+  .gfs-msg-dot span:nth-child(3){animation-delay:.4s}
+  .gfs-chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(30,41,59,.9);background:rgba(11,18,32,.8)}
+  .gfs-chat-input textarea{flex:1;padding:10px 12px;background:rgba(2,6,23,.7);border:1px solid rgba(51,65,85,.8);border-radius:10px;color:#e2e8f0;font-size:12px;font-family:inherit;resize:none;outline:none;transition:all .25s;max-height:100px;min-height:42px;line-height:1.4}
+  .gfs-chat-input textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
+  .gfs-chat-send{width:44px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s cubic-bezier(.34,1.56,.64,1);flex-shrink:0}
+  .gfs-chat-send svg{width:16px;height:16px}
+  .gfs-chat-send:hover:not(:disabled){transform:scale(1.08);box-shadow:0 6px 16px rgba(99,102,241,.45)}
+  .gfs-chat-send:disabled{opacity:.5;cursor:not-allowed}
+  .gfs-chat-chip{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
+  .gfs-chip{padding:5px 10px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:12px;color:#c7d2fe;font-size:10px;cursor:pointer;transition:all .2s}
+  .gfs-chip:hover{background:rgba(99,102,241,.3);transform:translateY(-1px)}
   `;
 
   const styleEl = document.createElement('style');
@@ -249,6 +247,7 @@
     </div>
     <div class="gfs-tabs">
       <button class="gfs-tab active" data-tab="solve">${SVG.play}<span>Solve</span></button>
+      <button class="gfs-tab" data-tab="chat">${SVG.chat}<span>Chat</span></button>
       <button class="gfs-tab" data-tab="explain">${SVG.book}<span>Explain</span></button>
       <button class="gfs-tab" data-tab="settings">${SVG.settings}<span>Config</span></button>
       <button class="gfs-tab" data-tab="log">${SVG.code}<span>Log</span></button>
@@ -273,6 +272,27 @@
           <div class="gfs-score-d" id="gfs-score-d"></div>
         </div>
       </div>
+      <div class="gfs-tab-panel" data-panel="chat">
+        <div class="gfs-chat-wrap">
+          <div class="gfs-chat-hdr">
+            <span style="display:flex;align-items:center;gap:6px">${SVG.chat}<span id="gfs-chat-model">Chat AI · —</span></span>
+            <button style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px" id="gfs-chat-clear" title="Clear chat">${SVG.trash}</button>
+          </div>
+          <div class="gfs-chat-msgs" id="gfs-chat-msgs">
+            <div class="gfs-msg ai">Halo! Tanya apa aja — konsep, soal, ringkasan, kode, apa pun. Gw pake provider + model yang aktif di tab Config.</div>
+          </div>
+          <div class="gfs-chat-chip" id="gfs-chat-chip">
+            <span class="gfs-chip" data-p="Ringkas jawaban ini dalam 1 paragraf">Ringkas</span>
+            <span class="gfs-chip" data-p="Jelaskan konsep ini lebih dalam">Jelaskan</span>
+            <span class="gfs-chip" data-p="Buatkan contoh soal serupa">Contoh soal</span>
+            <span class="gfs-chip" data-p="Terjemahkan ke Bahasa Indonesia">Terjemah</span>
+          </div>
+          <div class="gfs-chat-input">
+            <textarea id="gfs-chat-input" placeholder="Ketik pesan... (Enter kirim, Shift+Enter baris baru)" rows="1"></textarea>
+            <button class="gfs-chat-send" id="gfs-chat-send">${SVG.send}</button>
+          </div>
+        </div>
+      </div>
       <div class="gfs-tab-panel" data-panel="explain">
         <div class="gfs-expl-list" id="gfs-expl-list"><div style="color:#64748b;font-size:11px;text-align:center;padding:24px">✦ Belum ada penjelasan ✦</div></div>
       </div>
@@ -295,26 +315,22 @@
         <div class="gfs-log" id="gfs-log"><div>Ready.</div></div>
       </div>
       <div class="gfs-tab-panel" data-panel="credit">
-        <div class="gfs-credit-card">
-          <div class="gfs-credit-sparkles">
-            <span>✦</span><span>✦</span><span>✦</span><span>✦</span>
-          </div>
-          <div class="gfs-credit-avatar">${SVG.user}</div>
-          <div class="gfs-credit-name">ALIP / ALRECT</div>
-          <div class="gfs-credit-role">Developer</div>
-          <div class="gfs-credit-heart">${SVG.heart}<span>Made with passion</span></div>
-          <a class="gfs-credit-order" href="https://wa.me/6282192401340" target="_blank">
+        <div style="background:linear-gradient(160deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border:1px solid rgba(139,92,246,.35);border-radius:16px;padding:22px;text-align:center;position:relative">
+          <div style="width:80px;height:80px;margin:0 auto 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(139,92,246,.5)">${SVG.user}</div>
+          <div style="font-size:22px;font-weight:900;background:linear-gradient(135deg,#a5b4fc,#c4b5fd,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px">ALIP / ALRECT</div>
+          <div style="font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-top:4px;margin-bottom:16px">Developer</div>
+          <a style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid rgba(74,222,128,.4);border-radius:12px;color:#fff;font-weight:800;cursor:pointer;text-decoration:none;transition:all .3s;box-shadow:0 8px 24px rgba(74,222,128,.3)" href="https://wa.me/6282192401340" target="_blank">
             ${SVG.whatsapp}
-            <div class="gfs-credit-order-text">
-              <span class="gfs-credit-order-label">ORDER NOW</span>
-              <span class="gfs-credit-order-num">+62 821-9240-1340</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3">
+              <span style="font-size:9px;opacity:.8;letter-spacing:1px;font-weight:600">ORDER NOW</span>
+              <span style="font-size:14px;font-weight:900;letter-spacing:.5px">+62 821-9240-1340</span>
             </div>
           </a>
-          <div class="gfs-credit-footer">GFS AI Solver v14 · © 2026</div>
+          <div style="margin-top:16px;font-size:9.5px;color:#475569;letter-spacing:.5px">GFS AI Solver v15 · © 2026</div>
         </div>
       </div>
     </div>
-    <div class="gfs-footer"><span>⚡ GFS v14</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
+    <div class="gfs-footer"><span>⚡ GFS v15</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
   document.body.appendChild(panel);
 
   const $ = (id) => document.getElementById(id);
@@ -347,15 +363,18 @@
     const p = $('gfs-provider').value;
     const sel = $('gfs-model'); sel.innerHTML = '';
     (MODELS[p] || []).forEach((m) => { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
-    if (HARDCODED_KEYS[p]) { $('gfs-key').value = HARDCODED_KEYS[p]; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'auto'; }
-    else { $('gfs-key').value = ''; $('gfs-key-row').style.display = 'block'; $('gfs-key-hint').textContent = 'manual'; }
+    if (HARDCODED_KEYS[p]) { $('gfs-key').value = HARDCODED_KEYS[p]; $('gfs-key-hint').textContent = 'auto'; }
+    else { $('gfs-key').value = ''; $('gfs-key-hint').textContent = 'manual'; }
     const bs = BATCH_SIZE[p] || 6;
     $('gfs-tip').innerHTML = SVG.sparkle + '<span>' + p + ' · ' + sel.value + ' · batch ' + bs + '</span>';
     if ($('gfs-opt-persona').checked) $('gfs-persona').textContent = 'Persona: ' + (PERSONALITY[p] || '—');
-    else $('gfs-persona').style.display = 'none';
+    $('gfs-chat-model').textContent = 'Chat AI · ' + p + ' / ' + sel.value;
   };
   $('gfs-provider').onchange = updateModels;
-  $('gfs-model').onchange = () => { $('gfs-tip').innerHTML = SVG.sparkle + '<span>' + $('gfs-provider').value + ' · ' + $('gfs-model').value + '</span>'; };
+  $('gfs-model').onchange = () => {
+    $('gfs-tip').innerHTML = SVG.sparkle + '<span>' + $('gfs-provider').value + ' · ' + $('gfs-model').value + '</span>';
+    $('gfs-chat-model').textContent = 'Chat AI · ' + $('gfs-provider').value + ' / ' + $('gfs-model').value;
+  };
   $('gfs-opt-persona').onchange = () => { $('gfs-persona').style.display = $('gfs-opt-persona').checked ? 'block' : 'none'; if ($('gfs-opt-persona').checked) $('gfs-persona').textContent = 'Persona: ' + (PERSONALITY[$('gfs-provider').value] || '—'); };
 
   $('gfs-save').onclick = () => { localStorage.setItem('gfs_config', JSON.stringify({ provider: $('gfs-provider').value, model: $('gfs-model').value, key: $('gfs-key').value, oS: $('gfs-opt-scroll').checked, oE: $('gfs-opt-explain').checked, oP: $('gfs-opt-persona').checked })); log('Saved.', 'ok'); };
@@ -405,7 +424,6 @@
     const q = parseQuestions();
     log('Ditemukan ' + q.length + ' soal.', 'ok');
     q.slice(0, 3).forEach((item, i) => { log('Q' + (i + 1) + ': ' + (item.qText || '(no text)').slice(0, 60), 'info'); item.opts.forEach((o, j) => log('   ' + (j + 1) + '. ' + o.text.slice(0, 70), 'info')); });
-    if (q.length === 0) { const groups = document.querySelectorAll('div[role="radiogroup"]'); log('Raw groups: ' + groups.length, 'warn'); if (groups.length > 0) log('Sample HTML: ' + groups[0].outerHTML.slice(0, 500), 'warn'); }
   };
   $('gfs-clear').onclick = () => { let c = 0; document.querySelectorAll('div[role="radio"][aria-checked="true"]').forEach((el) => { el.click(); c++; }); log('Cleared ' + c + '.', 'warn'); };
   $('gfs-expl-toggle').onclick = () => { document.querySelectorAll('.gfs-tab').forEach((t) => t.classList.remove('active')); document.querySelectorAll('.gfs-tab-panel').forEach((p) => p.classList.remove('active')); document.querySelector('.gfs-tab[data-tab="explain"]').classList.add('active'); document.querySelector('.gfs-tab-panel[data-panel="explain"]').classList.add('active'); };
@@ -454,10 +472,145 @@
     let text = data?.result?.response;
     if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
     if (!text) throw new Error('Cloudflare empty.');
-    log('CF raw: ' + String(text).slice(0, 200), 'ai');
     return text;
   };
 
+  // ─── CHAT CALLERS (free-form text, no JSON) ───
+  const chatGroq = async (key, model, messages, persona) => {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas, jelas. Bahasa Indonesia santai.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
+    });
+    if (!res.ok) throw new Error('Groq ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    const data = await res.json();
+    return data.choices[0].message.content;
+  };
+
+  const chatOpenRouter = async (key, model, messages, persona) => {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
+    });
+    if (!res.ok) throw new Error('OpenRouter ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    const data = await res.json();
+    return data.choices[0].message.content;
+  };
+
+  const chatOpenAI = async (key, model, messages, persona) => {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
+    });
+    if (!res.ok) throw new Error('OpenAI ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    const data = await res.json();
+    return data.choices[0].message.content;
+  };
+
+  const chatCloudflare = async (token, model, messages, persona) => {
+    const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
+    const res = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas.' }, ...messages] })
+    });
+    if (!res.ok) { const errText = await res.text(); throw new Error('Cloudflare ' + res.status + ': ' + errText.slice(0, 200)); }
+    const data = await res.json();
+    if (!data.success) throw new Error('Cloudflare fail: ' + JSON.stringify(data.errors || data).slice(0, 150));
+    let text = data?.result?.response;
+    if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
+    if (!text) throw new Error('Cloudflare empty.');
+    return text;
+  };
+
+  const chatDispatch = async (provider, key, model, messages, persona) => {
+    if (provider === 'groq') return chatGroq(key, model, messages, persona);
+    if (provider === 'cloudflare') return chatCloudflare(key, model, messages, persona);
+    if (provider === 'openrouter') return chatOpenRouter(key, model, messages, persona);
+    return chatOpenAI(key, model, messages, persona);
+  };
+
+  // ─── CHAT UI ───
+  const chatMsgs = $('gfs-chat-msgs');
+  const chatInput = $('gfs-chat-input');
+  const chatSend = $('gfs-chat-send');
+
+  const appendMsg = (text, role) => {
+    const div = document.createElement('div');
+    div.className = 'gfs-msg ' + role;
+    div.textContent = text;
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
+    return div;
+  };
+
+  const appendTyping = () => {
+    const div = document.createElement('div');
+    div.className = 'gfs-msg ai';
+    div.innerHTML = '<div class="gfs-msg-dot"><span></span><span></span><span></span></div>';
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop = chatMsgs.scrollHeight;
+    return div;
+  };
+
+  chatInput.addEventListener('input', () => {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
+  });
+
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doChat(); }
+  });
+
+  chatSend.onclick = doChat;
+
+  async function doChat() {
+    const text = chatInput.value.trim();
+    if (!text || state.running) return;
+    const key = $('gfs-key').value.trim();
+    const provider = $('gfs-provider').value;
+    const model = $('gfs-model').value;
+    if (!key) { appendMsg('API key kosong. Isi di tab Config.', 'err'); return; }
+
+    appendMsg(text, 'user');
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    state.chatHistory.push({ role: 'user', content: text });
+
+    state.running = true;
+    setStatus('running'); $('gfs-status').classList.add('busy');
+    chatSend.disabled = true;
+    const typing = appendTyping();
+
+    try {
+      const persona = PERSONALITY[provider] || '';
+      const reply = await chatDispatch(provider, key, model, state.chatHistory.slice(-20), persona);
+      typing.remove();
+      appendMsg(reply, 'ai');
+      state.chatHistory.push({ role: 'assistant', content: reply });
+      log('Chat reply (' + reply.length + ' chars)', 'ok');
+      setStatus('done');
+    } catch (e) {
+      typing.remove();
+      appendMsg('ERROR: ' + e.message, 'err');
+      log('Chat error: ' + e.message, 'err');
+      setStatus('error');
+    } finally {
+      state.running = false; chatSend.disabled = false;
+      $('gfs-status').classList.remove('busy');
+    }
+  }
+
+  document.querySelectorAll('.gfs-chip').forEach((chip) => {
+    chip.onclick = () => { chatInput.value = chip.dataset.p; chatInput.focus(); };
+  });
+
+  $('gfs-chat-clear').onclick = () => {
+    state.chatHistory = [];
+    chatMsgs.innerHTML = '';
+    appendMsg('Chat dibersihkan. Mulai lagi.', 'ai');
+    log('Chat history cleared.', 'warn');
+  };
+
+  // ─── SOLVE LOGIC ───
   const parseResponse = (raw) => {
     let data;
     try { data = JSON.parse(raw); }
@@ -521,7 +674,6 @@
     });
   };
 
-  // ─── SOLVE ───
   $('gfs-solve').onclick = async () => {
     if (state.running) return;
     const key = $('gfs-key').value.trim();
@@ -530,13 +682,7 @@
     if (!key) return log('API key kosong.', 'err');
 
     const questions = parseQuestions();
-    if (!questions.length) {
-      log('Nggak ada soal ke-parse!', 'err');
-      const groups = document.querySelectorAll('div[role="radiogroup"]');
-      log('Raw groups: ' + groups.length, 'warn');
-      if (groups.length > 0) log('HTML: ' + groups[0].outerHTML.slice(0, 400), 'warn');
-      return;
-    }
+    if (!questions.length) { log('Nggak ada soal ke-parse!', 'err'); return; }
 
     state.running = true; setStatus('running'); $('gfs-status').classList.add('busy');
     const btn = $('gfs-solve'); btn.disabled = true; btn.innerHTML = SVG.rocket + '<span>PROCESSING...</span>';
@@ -547,8 +693,8 @@
     const bs = BATCH_SIZE[provider] || 6;
     const totalBatches = Math.ceil(questions.length / bs);
 
-    log('═══ PROVIDER: ' + provider + ' · MODEL: ' + model + ' ═══', 'ai');
-    log('Total: ' + questions.length + ' soal · ' + totalBatches + ' batch × ' + bs, 'info');
+    log('═══ ' + provider + ' · ' + model + ' ═══', 'ai');
+    log('Total: ' + questions.length + ' soal · ' + totalBatches + ' batch', 'info');
 
     const allAnswers = [];
     const allMatches = {};
@@ -567,7 +713,7 @@
           else if (provider === 'cloudflare') raw = await callCloudflare(key, model, batchPrompt, persona);
           else if (provider === 'openrouter') raw = await callOpenRouter(key, model, batchPrompt, persona);
           else raw = await callOpenAI(key, model, batchPrompt, persona);
-          log('Batch ' + (b + 1) + ' response (' + raw.length + ' chars)', 'ok');
+          log('Batch ' + (b + 1) + ' OK (' + raw.length + ' chars)', 'ok');
         } catch (e) {
           log('Batch ' + (b + 1) + ' gagal: ' + e.message, 'err');
           await sleep(1500); continue;
@@ -577,17 +723,12 @@
           const answers = parseResponse(raw);
           log('Batch ' + (b + 1) + ' → ' + answers.length + ' jawaban', 'ok');
           answers.forEach(a => allAnswers.push(a));
-        } catch (e) {
-          log('Batch ' + (b + 1) + ' parse gagal: ' + e.message, 'warn');
-          log('Raw: ' + raw.slice(0, 200), 'warn');
-        }
+        } catch (e) { log('Parse gagal: ' + e.message, 'warn'); }
 
         await sleep(800);
       }
 
-      log('Total jawaban AI: ' + allAnswers.length, 'info');
-
-      let clicked = 0, totalConf = 0, skipped = 0;
+      let clicked = 0, skipped = 0;
       for (let i = 0; i < allAnswers.length; i++) {
         const a = allAnswers[i];
         $('gfs-progress-fill').style.width = Math.round(((i + 1) / allAnswers.length) * 100) + '%';
@@ -595,22 +736,21 @@
         if (!q) continue;
         const mt = findOption(q, a.answer);
         allMatches[a.idx] = mt;
-        log('Q' + a.idx + ' → "' + a.answer.slice(0, 50) + '" · ' + mt.reason, 'info');
+        log('Q' + a.idx + ' → "' + a.answer.slice(0, 40) + '" · ' + mt.reason, 'info');
         if (mt.el) {
           if ($('gfs-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           await sleep(100); mt.el.click();
-          clicked++; totalConf += a.confidence;
-          log('  ✓ CLICKED', 'ok');
-        } else { skipped++; log('  ✗ NO MATCH', 'err'); }
+          clicked++; log('  ✓', 'ok');
+        } else { skipped++; log('  ✗', 'err'); }
         await sleep(150);
       }
 
       renderExplanations(allAnswers, questions, allMatches);
       $('gfs-score').classList.add('active');
       $('gfs-score-v').textContent = clicked + '/' + questions.length;
-      $('gfs-score-d').textContent = 'Provider: ' + provider + ' · Terisi: ' + clicked + ' · Skip: ' + skipped + ' · by Alip/Alrect';
+      $('gfs-score-d').textContent = 'Provider: ' + provider + ' · Terisi: ' + clicked + ' · Skip: ' + skipped;
       setStatus('done');
-      log('═══ SELESAI: ' + clicked + '/' + questions.length + ' · skip ' + skipped + ' ═══', 'ok');
+      log('═══ SELESAI: ' + clicked + '/' + questions.length + ' ═══', 'ok');
     } catch (e) {
       log('ERROR: ' + e.message, 'err'); setStatus('error');
     } finally {
@@ -630,5 +770,5 @@
 
   $('gfs-provider').value = 'groq';
   updateModels();
-  log('GFS v14 by Alip/Alrect. Immersive UI + Credit tab.', 'ok');
+  log('GFS v15 by Alip/Alrect. + Chat AI tab.', 'ok');
 })();
