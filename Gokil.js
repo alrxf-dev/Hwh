@@ -1,4 +1,4 @@
-/* GFS AI Solver PRO v15 — by Alip/Alrect — + Chat AI Tab */
+/* GFS AI Solver PRO v16 — by Alip/Alrect — + Chat Auto-Solve by Number */
 (function () {
   if (window.__GFS_LOADED__) { document.getElementById('gfs-panel')?.remove(); document.getElementById('gfs-stealth-btn')?.remove(); window.__GFS_LOADED__ = false; return; }
   window.__GFS_LOADED__ = true;
@@ -65,131 +65,120 @@
   @keyframes gfsTabIn{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
   @keyframes gfsPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.5}}
   @keyframes gfsSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  @keyframes gfsRipple{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
   @keyframes gfsFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
   @keyframes gfsShine{0%{background-position:-200% 0}100%{background-position:200% 0}}
   @keyframes gfsGlow{0%,100%{box-shadow:0 0 12px rgba(139,92,246,.5),0 0 24px rgba(99,102,241,.3)}50%{box-shadow:0 0 20px rgba(139,92,246,.8),0 0 36px rgba(99,102,241,.5)}}
-  @keyframes gfsHeart{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
-  @keyframes gfsSparkle{0%{opacity:0;transform:scale(0) rotate(0)}50%{opacity:1;transform:scale(1) rotate(180deg)}100%{opacity:0;transform:scale(0) rotate(360deg)}}
   @keyframes gfsSlideIn{0%{opacity:0;transform:translateX(-8px)}100%{opacity:1;transform:translateX(0)}}
   @keyframes gfsDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
 
-  #gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:94vw;background:linear-gradient(160deg,#0a0f1c 0%,#0f172a 50%,#0b1220 100%);color:#e2e8f0;border:1px solid rgba(139,92,246,.25);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 0 1px rgba(139,92,246,.15),inset 0 1px 0 rgba(255,255,255,.05);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden;animation:gfsPanelIn .5s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+  #gfs-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:94vw;background:linear-gradient(160deg,#0a0f1c 0%,#0f172a 50%,#0b1220 100%);color:#e2e8f0;border:1px solid rgba(139,92,246,.25);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.9),0 0 0 1px rgba(139,92,246,.15),inset 0 1px 0 rgba(255,255,255,.05);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden;animation:gfsPanelIn .5s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(20px)}
   #gfs-panel *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   #gfs-panel::-webkit-scrollbar{width:6px}
-  #gfs-panel::-webkit-scrollbar-track{background:transparent}
   #gfs-panel::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
 
   .gfs-hdr{padding:16px 18px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 45%,#a855f7 100%);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
   .gfs-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);background-size:200% 100%;animation:gfsShine 3s infinite;pointer-events:none;mix-blend-mode:overlay}
-  .gfs-hdr::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 0%,rgba(255,255,255,.3),transparent 55%);pointer-events:none}
-  .gfs-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none;position:relative;z-index:1;letter-spacing:.3px}
-  .gfs-logo{width:30px;height:30px;background:rgba(255,255,255,.22);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 4px 12px rgba(0,0,0,.2);animation:gfsFloat 3s ease-in-out infinite}
-  .gfs-logo svg{width:16px;height:16px;color:#fff;filter:drop-shadow(0 0 6px rgba(255,255,255,.6))}
-  .gfs-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80,0 0 20px rgba(74,222,128,.5);animation:gfsPulse 2s infinite}
-  .gfs-status.busy{background:#facc15;box-shadow:0 0 10px #facc15,0 0 20px rgba(250,204,21,.5);animation:gfsSpin 1s linear infinite}
+  .gfs-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none;position:relative;z-index:1}
+  .gfs-logo{width:30px;height:30px;background:rgba(255,255,255,.22);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.4);animation:gfsFloat 3s ease-in-out infinite}
+  .gfs-logo svg{width:16px;height:16px;color:#fff}
+  .gfs-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:gfsPulse 2s infinite}
+  .gfs-status.busy{background:#facc15;box-shadow:0 0 10px #facc15;animation:gfsSpin 1s linear infinite}
   .gfs-hdr-btns{display:flex;gap:6px;position:relative;z-index:1}
-  .gfs-hdr button{background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(6px);position:relative;overflow:hidden}
+  .gfs-hdr button{background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s}
   .gfs-hdr button svg{width:14px;height:14px}
-  .gfs-hdr button:hover{background:rgba(255,255,255,.32);transform:scale(1.12) rotate(3deg);box-shadow:0 4px 14px rgba(0,0,0,.3)}
-  .gfs-hdr button:active{transform:scale(.95)}
+  .gfs-hdr button:hover{background:rgba(255,255,255,.32);transform:scale(1.12)}
 
-  .gfs-tabs{display:flex;background:rgba(11,18,32,.6);border-bottom:1px solid rgba(139,92,246,.15);padding:6px 8px 0;flex-shrink:0;gap:2px;position:relative;overflow-x:auto}
+  .gfs-tabs{display:flex;background:rgba(11,18,32,.6);border-bottom:1px solid rgba(139,92,246,.15);padding:6px 8px 0;flex-shrink:0;gap:2px;overflow-x:auto}
   .gfs-tabs::-webkit-scrollbar{display:none}
-  .gfs-tab{flex:1;min-width:60px;padding:11px 6px;background:none;border:none;color:#64748b;font-size:9.5px;font-weight:800;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.6px;transition:all .3s cubic-bezier(.34,1.56,.64,1);border-radius:10px 10px 0 0;position:relative;display:flex;align-items:center;justify-content:center;gap:4px}
-  .gfs-tab svg{width:13px;height:13px;opacity:.7;transition:all .3s}
-  .gfs-tab::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%) scaleX(0);width:70%;height:2px;background:linear-gradient(90deg,transparent,#818cf8,transparent);transition:transform .3s cubic-bezier(.34,1.56,.64,1);border-radius:2px}
-  .gfs-tab:hover{color:#94a3b8;background:rgba(148,163,184,.05)}
-  .gfs-tab:hover svg{opacity:1;transform:scale(1.1)}
+  .gfs-tab{flex:1;min-width:58px;padding:11px 6px;background:none;border:none;color:#64748b;font-size:9.5px;font-weight:800;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.6px;transition:all .3s;border-radius:10px 10px 0 0;position:relative;display:flex;align-items:center;justify-content:center;gap:4px}
+  .gfs-tab svg{width:13px;height:13px;opacity:.7}
+  .gfs-tab::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%) scaleX(0);width:70%;height:2px;background:linear-gradient(90deg,transparent,#818cf8,transparent);transition:transform .3s;border-radius:2px}
+  .gfs-tab:hover{color:#94a3b8}
   .gfs-tab.active{color:#c7d2fe;background:linear-gradient(180deg,rgba(99,102,241,.15),rgba(99,102,241,.02))}
-  .gfs-tab.active svg{opacity:1;color:#a5b4fc;filter:drop-shadow(0 0 6px rgba(165,180,252,.6))}
+  .gfs-tab.active svg{opacity:1;color:#a5b4fc}
   .gfs-tab.active::after{transform:translateX(-50%) scaleX(1)}
 
-  .gfs-body{padding:18px;overflow-y:auto;flex:1;min-height:0;scroll-behavior:smooth}
+  .gfs-body{padding:18px;overflow-y:auto;flex:1;min-height:0}
   .gfs-tab-panel{display:none}
-  .gfs-tab-panel.active{display:block;animation:gfsTabIn .35s cubic-bezier(.34,1.56,.64,1)}
+  .gfs-tab-panel.active{display:block;animation:gfsTabIn .35s}
   .gfs-row{margin-bottom:13px}
   .gfs-lbl{display:flex;align-items:center;gap:5px;font-size:10px;color:#94a3b8;margin-bottom:7px;text-transform:uppercase;font-weight:800;letter-spacing:.7px}
   .gfs-lbl svg{width:12px;height:12px;color:#818cf8}
-  .gfs-hint{font-size:9.5px;color:#475569;text-transform:none;letter-spacing:0;font-weight:500;margin-left:auto}
-  .gfs-input,.gfs-select{width:100%;padding:11px 13px;background:rgba(11,18,32,.7);border:1px solid rgba(51,65,85,.8);border-radius:11px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none;transition:all .25s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(4px)}
-  .gfs-input:focus,.gfs-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18),0 4px 12px rgba(99,102,241,.15);background:rgba(11,18,32,.9);transform:translateY(-1px)}
+  .gfs-hint{font-size:9.5px;color:#475569;text-transform:none;margin-left:auto;font-weight:500}
+  .gfs-input,.gfs-select{width:100%;padding:11px 13px;background:rgba(11,18,32,.7);border:1px solid rgba(51,65,85,.8);border-radius:11px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none;transition:all .25s}
+  .gfs-input:focus,.gfs-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
   .gfs-input-wrap{position:relative}
   .gfs-input-wrap .gfs-input{padding-right:44px}
-  .gfs-eye{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:7px 10px;border-radius:7px;transition:all .2s;display:flex;align-items:center}
+  .gfs-eye{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:7px 10px;border-radius:7px}
   .gfs-eye svg{width:14px;height:14px}
-  .gfs-eye:hover{color:#a5b4fc;background:rgba(99,102,241,.15);transform:translateY(-50%) scale(1.1)}
+  .gfs-eye:hover{color:#a5b4fc;background:rgba(99,102,241,.15)}
 
-  .gfs-btn{width:100%;padding:13px;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .3s cubic-bezier(.34,1.56,.64,1);position:relative;overflow:hidden;letter-spacing:.3px}
+  .gfs-btn{width:100%;padding:13px;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .3s;position:relative;overflow:hidden}
   .gfs-btn svg{width:16px;height:16px}
-  .gfs-btn-main{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);color:#fff;box-shadow:0 8px 24px rgba(99,102,241,.45),inset 0 1px 0 rgba(255,255,255,.25);background-size:200% 100%;background-position:0 0;transition:background-position .5s,transform .3s cubic-bezier(.34,1.56,.64,1),box-shadow .3s}
-  .gfs-btn-main:hover:not(:disabled){background-position:100% 0;transform:translateY(-2px) scale(1.01);box-shadow:0 14px 32px rgba(99,102,241,.55),inset 0 1px 0 rgba(255,255,255,.3)}
-  .gfs-btn-main:active:not(:disabled){transform:translateY(0) scale(.99)}
-  .gfs-btn-main:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
-  .gfs-btn-sec{background:rgba(30,41,59,.8);color:#cbd5e1;border:1px solid rgba(51,65,85,.9);backdrop-filter:blur(4px)}
-  .gfs-btn-sec:hover{background:rgba(51,65,85,.9);color:#e2e8f0;transform:translateY(-1px);border-color:rgba(99,102,241,.4);box-shadow:0 6px 16px rgba(0,0,0,.3)}
+  .gfs-btn-main{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);color:#fff;box-shadow:0 8px 24px rgba(99,102,241,.45)}
+  .gfs-btn-main:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 32px rgba(99,102,241,.55)}
+  .gfs-btn-main:disabled{opacity:.5;cursor:not-allowed}
+  .gfs-btn-sec{background:rgba(30,41,59,.8);color:#cbd5e1;border:1px solid rgba(51,65,85,.9)}
+  .gfs-btn-sec:hover{background:rgba(51,65,85,.9);color:#e2e8f0}
   .gfs-btn-danger{background:rgba(69,10,10,.7);color:#fca5a5;border:1px solid rgba(127,29,29,.7)}
-  .gfs-btn-danger:hover{background:rgba(127,29,29,.9);transform:translateY(-1px);box-shadow:0 6px 16px rgba(239,68,68,.25)}
+  .gfs-btn-danger:hover{background:rgba(127,29,29,.9)}
   .gfs-btn-stealth{background:linear-gradient(135deg,rgba(15,23,42,.9),rgba(30,41,59,.9));color:#94a3b8;border:1px solid rgba(51,65,85,.8)}
-  .gfs-btn-stealth:hover{color:#e2e8f0;border-color:rgba(139,92,246,.5);box-shadow:0 6px 16px rgba(139,92,246,.2)}
+  .gfs-btn-stealth:hover{color:#e2e8f0;border-color:rgba(139,92,246,.5)}
   .gfs-btn-sm{padding:9px 12px;font-size:11.5px;border-radius:9px}
   .gfs-btn-sm svg{width:14px;height:14px}
   .gfs-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
   .gfs-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
 
-  .gfs-progress{height:6px;background:rgba(30,41,59,.7);border-radius:4px;overflow:hidden;margin-top:12px;display:none;box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
-  .gfs-progress.active{display:block;animation:gfsTabIn .3s}
-  .gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7,#8b5cf6,#6366f1);background-size:200% 100%;transition:width .4s cubic-bezier(.34,1.56,.64,1);width:0%;border-radius:4px;animation:gfsShine 2s linear infinite;box-shadow:0 0 12px rgba(139,92,246,.6)}
+  .gfs-progress{height:6px;background:rgba(30,41,59,.7);border-radius:4px;overflow:hidden;margin-top:12px;display:none}
+  .gfs-progress.active{display:block}
+  .gfs-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7,#8b5cf6,#6366f1);background-size:200% 100%;transition:width .4s;width:0%;border-radius:4px;animation:gfsShine 2s linear infinite}
 
-  .gfs-score{margin-top:16px;padding:18px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:14px;border-left:4px solid #6366f1;display:none;position:relative;overflow:hidden}
-  .gfs-score::before{content:'';position:absolute;top:-40%;right:-20%;width:200px;height:200px;background:radial-gradient(circle,rgba(139,92,246,.2),transparent 70%);pointer-events:none}
-  .gfs-score.active{display:block;animation:gfsTabIn .4s cubic-bezier(.34,1.56,.64,1)}
-  .gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:800;display:flex;align-items:center;gap:6px;position:relative;z-index:1}
+  .gfs-score{margin-top:16px;padding:18px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:14px;border-left:4px solid #6366f1;display:none}
+  .gfs-score.active{display:block}
+  .gfs-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:800;display:flex;align-items:center;gap:6px}
   .gfs-score-h svg{width:13px;height:13px;color:#fbbf24}
-  .gfs-score-v{font-size:38px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1.5px;position:relative;z-index:1}
-  .gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px;position:relative;z-index:1}
+  .gfs-score-v{font-size:38px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1.5px}
+  .gfs-score-d{font-size:11px;color:#94a3b8;margin-top:8px}
 
-  .gfs-log{background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:14px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;height:290px;overflow-y:auto;color:#94a3b8;line-height:1.7;box-shadow:inset 0 2px 8px rgba(0,0,0,.4);position:relative}
-  .gfs-log div{margin-bottom:2px;word-break:break-word;animation:gfsSlideIn .25s ease-out}
-  .gfs-log .ok{color:#4ade80;text-shadow:0 0 4px rgba(74,222,128,.4)}
-  .gfs-log .err{color:#f87171;text-shadow:0 0 4px rgba(248,113,113,.4)}
+  .gfs-log{background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:14px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;height:290px;overflow-y:auto;color:#94a3b8;line-height:1.7}
+  .gfs-log div{margin-bottom:2px;word-break:break-word}
+  .gfs-log .ok{color:#4ade80}
+  .gfs-log .err{color:#f87171}
   .gfs-log .info{color:#60a5fa}
   .gfs-log .warn{color:#fbbf24}
-  .gfs-log .ai{color:#c4b5fd;font-weight:700;text-shadow:0 0 6px rgba(196,181,253,.5)}
+  .gfs-log .ai{color:#c4b5fd;font-weight:700}
   .gfs-log::-webkit-scrollbar{width:5px}
   .gfs-log::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
 
-  .gfs-footer{padding:11px 18px;background:rgba(10,15,28,.85);border-top:1px solid rgba(30,41,59,.8);font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;backdrop-filter:blur(8px)}
-  .gfs-badge{padding:4px 10px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:7px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:700;letter-spacing:.5px;text-transform:uppercase;transition:all .3s}
+  .gfs-footer{padding:11px 18px;background:rgba(10,15,28,.85);border-top:1px solid rgba(30,41,59,.8);font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+  .gfs-badge{padding:4px 10px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:7px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:700;text-transform:uppercase}
   .gfs-badge.busy{background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24;animation:gfsPulse 1.5s infinite}
   .gfs-badge.error{background:linear-gradient(135deg,#450a0a,#7f1d1d);color:#fca5a5}
-  .gfs-badge.done{background:linear-gradient(135deg,#14532d,#15803d);color:#86efac;box-shadow:0 0 12px rgba(74,222,128,.4)}
+  .gfs-badge.done{background:linear-gradient(135deg,#14532d,#15803d);color:#86efac}
 
   .gfs-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:11px 13px;background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.05));border-left:3px solid #6366f1;border-radius:0 10px 10px 0;line-height:1.55;display:flex;align-items:center;gap:8px}
   .gfs-tip svg{width:14px;height:14px;color:#818cf8;flex-shrink:0}
 
   .gfs-expl-list{max-height:340px;overflow-y:auto;background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:12px}
-  .gfs-expl-item{padding:12px;margin-bottom:10px;background:linear-gradient(135deg,rgba(30,41,59,.6),rgba(51,65,85,.4));border-radius:11px;border-left:3px solid #6366f1;transition:all .3s}
-  .gfs-expl-item:hover{transform:translateY(-2px) scale(1.005);box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .gfs-expl-num{font-size:10px;color:#64748b;font-weight:800;margin-bottom:5px;text-transform:uppercase;letter-spacing:.6px;display:flex;align-items:center;gap:5px}
+  .gfs-expl-item{padding:12px;margin-bottom:10px;background:linear-gradient(135deg,rgba(30,41,59,.6),rgba(51,65,85,.4));border-radius:11px;border-left:3px solid #6366f1}
+  .gfs-expl-num{font-size:10px;color:#64748b;font-weight:800;margin-bottom:5px;text-transform:uppercase;display:flex;align-items:center;gap:5px}
   .gfs-expl-ans{font-size:12px;color:#86efac;font-weight:700;margin-bottom:5px}
   .gfs-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.6}
   .gfs-expl-conf{font-size:9.5px;color:#64748b;margin-top:5px;font-family:monospace}
 
   .gfs-toggle{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
   .gfs-toggle input{opacity:0;width:0;height:0}
-  .gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s cubic-bezier(.34,1.56,.64,1);border-radius:22px}
-  .gfs-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;transition:.3s cubic-bezier(.34,1.56,.64,1);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.4)}
-  input:checked + .gfs-slider{background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 0 12px rgba(99,102,241,.5)}
+  .gfs-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:22px}
+  .gfs-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
+  input:checked + .gfs-slider{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
   input:checked + .gfs-slider:before{transform:translateX(18px)}
 
-  #gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:56px;height:56px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 12px 32px rgba(99,102,241,.55),inset 0 1px 0 rgba(255,255,255,.3);z-index:2147483646;animation:gfsGlow 2s infinite;transition:all .3s cubic-bezier(.34,1.56,.64,1)}
-  #gfs-stealth-btn svg{width:24px;height:24px;filter:drop-shadow(0 0 6px rgba(255,255,255,.6))}
+  #gfs-stealth-btn{position:fixed;right:20px;bottom:20px;width:56px;height:56px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 12px 32px rgba(99,102,241,.55);z-index:2147483646;animation:gfsGlow 2s infinite;transition:all .3s}
+  #gfs-stealth-btn svg{width:24px;height:24px}
   #gfs-stealth-btn.active{display:flex}
-  #gfs-stealth-btn:hover{transform:scale(1.15) rotate(8deg)}
+  #gfs-stealth-btn:hover{transform:scale(1.15)}
 
-  .gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:linear-gradient(135deg,rgba(11,18,32,.7),rgba(15,23,42,.6));border:1px solid rgba(51,65,85,.6);border-radius:11px;margin-bottom:9px;transition:all .25s}
-  .gfs-switch-row:hover{border-color:rgba(99,102,241,.4);transform:translateX(2px)}
+  .gfs-switch-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:rgba(11,18,32,.7);border:1px solid rgba(51,65,85,.6);border-radius:11px;margin-bottom:9px}
   .gfs-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:700}
   .gfs-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}
   .gfs-persona{font-size:10px;color:#a5b4fc;margin-bottom:10px;padding:10px 12px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(99,102,241,.08));border-left:2px solid #8b5cf6;border-radius:0 10px 10px 0;line-height:1.55;font-style:italic}
@@ -200,24 +189,25 @@
   .gfs-chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
   .gfs-chat-msgs::-webkit-scrollbar{width:5px}
   .gfs-chat-msgs::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
-  .gfs-msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:12px;line-height:1.55;word-wrap:break-word;white-space:pre-wrap;animation:gfsTabIn .3s ease-out}
-  .gfs-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:4px;box-shadow:0 4px 12px rgba(99,102,241,.3)}
+  .gfs-msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:12px;line-height:1.55;word-wrap:break-word;white-space:pre-wrap;animation:gfsTabIn .3s}
+  .gfs-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:4px}
   .gfs-msg.ai{align-self:flex-start;background:linear-gradient(135deg,rgba(30,41,59,.95),rgba(51,65,85,.85));color:#e2e8f0;border-bottom-left-radius:4px;border:1px solid rgba(139,92,246,.2)}
-  .gfs-msg.err{align-self:flex-start;background:linear-gradient(135deg,rgba(69,10,10,.9),rgba(127,29,29,.7));color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  .gfs-msg.err{align-self:flex-start;background:rgba(69,10,10,.9);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  .gfs-msg.sys{align-self:center;background:rgba(99,102,241,.15);color:#c7d2fe;border:1px dashed rgba(99,102,241,.4);font-size:11px;text-align:center;max-width:95%}
   .gfs-msg-dot{display:inline-flex;gap:3px;padding:4px 0}
   .gfs-msg-dot span{width:6px;height:6px;border-radius:50%;background:#a5b4fc;animation:gfsDot 1.2s infinite}
   .gfs-msg-dot span:nth-child(2){animation-delay:.2s}
   .gfs-msg-dot span:nth-child(3){animation-delay:.4s}
   .gfs-chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(30,41,59,.9);background:rgba(11,18,32,.8)}
-  .gfs-chat-input textarea{flex:1;padding:10px 12px;background:rgba(2,6,23,.7);border:1px solid rgba(51,65,85,.8);border-radius:10px;color:#e2e8f0;font-size:12px;font-family:inherit;resize:none;outline:none;transition:all .25s;max-height:100px;min-height:42px;line-height:1.4}
+  .gfs-chat-input textarea{flex:1;padding:10px 12px;background:rgba(2,6,23,.7);border:1px solid rgba(51,65,85,.8);border-radius:10px;color:#e2e8f0;font-size:12px;font-family:inherit;resize:none;outline:none;max-height:100px;min-height:42px;line-height:1.4}
   .gfs-chat-input textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
-  .gfs-chat-send{width:44px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s cubic-bezier(.34,1.56,.64,1);flex-shrink:0}
+  .gfs-chat-send{width:44px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
   .gfs-chat-send svg{width:16px;height:16px}
-  .gfs-chat-send:hover:not(:disabled){transform:scale(1.08);box-shadow:0 6px 16px rgba(99,102,241,.45)}
+  .gfs-chat-send:hover:not(:disabled){transform:scale(1.08)}
   .gfs-chat-send:disabled{opacity:.5;cursor:not-allowed}
   .gfs-chat-chip{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
-  .gfs-chip{padding:5px 10px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:12px;color:#c7d2fe;font-size:10px;cursor:pointer;transition:all .2s}
-  .gfs-chip:hover{background:rgba(99,102,241,.3);transform:translateY(-1px)}
+  .gfs-chip{padding:5px 10px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:12px;color:#c7d2fe;font-size:10px;cursor:pointer}
+  .gfs-chip:hover{background:rgba(99,102,241,.3)}
   `;
 
   const styleEl = document.createElement('style');
@@ -279,16 +269,16 @@
             <button style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px" id="gfs-chat-clear" title="Clear chat">${SVG.trash}</button>
           </div>
           <div class="gfs-chat-msgs" id="gfs-chat-msgs">
-            <div class="gfs-msg ai">Halo! Tanya apa aja — konsep, soal, ringkasan, kode, apa pun. Gw pake provider + model yang aktif di tab Config.</div>
+            <div class="gfs-msg ai">Halo! Tanya apa aja. Atau ketik perintah auto-solve, contoh: "kerjain nomor 1-5" · "jawab nomor 3" · "isi nomor 1-dst"</div>
           </div>
           <div class="gfs-chat-chip" id="gfs-chat-chip">
-            <span class="gfs-chip" data-p="Ringkas jawaban ini dalam 1 paragraf">Ringkas</span>
+            <span class="gfs-chip" data-p="kerjain nomor 1-dst">Semua soal</span>
+            <span class="gfs-chip" data-p="kerjain nomor 1-5">Nomor 1-5</span>
             <span class="gfs-chip" data-p="Jelaskan konsep ini lebih dalam">Jelaskan</span>
-            <span class="gfs-chip" data-p="Buatkan contoh soal serupa">Contoh soal</span>
-            <span class="gfs-chip" data-p="Terjemahkan ke Bahasa Indonesia">Terjemah</span>
+            <span class="gfs-chip" data-p="Ringkas jawaban ini dalam 1 paragraf">Ringkas</span>
           </div>
           <div class="gfs-chat-input">
-            <textarea id="gfs-chat-input" placeholder="Ketik pesan... (Enter kirim, Shift+Enter baris baru)" rows="1"></textarea>
+            <textarea id="gfs-chat-input" placeholder="Ketik pesan atau perintah... (Enter kirim)" rows="1"></textarea>
             <button class="gfs-chat-send" id="gfs-chat-send">${SVG.send}</button>
           </div>
         </div>
@@ -315,22 +305,22 @@
         <div class="gfs-log" id="gfs-log"><div>Ready.</div></div>
       </div>
       <div class="gfs-tab-panel" data-panel="credit">
-        <div style="background:linear-gradient(160deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border:1px solid rgba(139,92,246,.35);border-radius:16px;padding:22px;text-align:center;position:relative">
+        <div style="background:linear-gradient(160deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border:1px solid rgba(139,92,246,.35);border-radius:16px;padding:22px;text-align:center">
           <div style="width:80px;height:80px;margin:0 auto 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(139,92,246,.5)">${SVG.user}</div>
           <div style="font-size:22px;font-weight:900;background:linear-gradient(135deg,#a5b4fc,#c4b5fd,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px">ALIP / ALRECT</div>
           <div style="font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-top:4px;margin-bottom:16px">Developer</div>
-          <a style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid rgba(74,222,128,.4);border-radius:12px;color:#fff;font-weight:800;cursor:pointer;text-decoration:none;transition:all .3s;box-shadow:0 8px 24px rgba(74,222,128,.3)" href="https://wa.me/6282192401340" target="_blank">
+          <a style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid rgba(74,222,128,.4);border-radius:12px;color:#fff;font-weight:800;text-decoration:none" href="https://wa.me/6282192401340" target="_blank">
             ${SVG.whatsapp}
             <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3">
-              <span style="font-size:9px;opacity:.8;letter-spacing:1px;font-weight:600">ORDER NOW</span>
-              <span style="font-size:14px;font-weight:900;letter-spacing:.5px">+62 821-9240-1340</span>
+              <span style="font-size:9px;opacity:.8;letter-spacing:1px">ORDER NOW</span>
+              <span style="font-size:14px;font-weight:900">+62 821-9240-1340</span>
             </div>
           </a>
-          <div style="margin-top:16px;font-size:9.5px;color:#475569;letter-spacing:.5px">GFS AI Solver v15 · © 2026</div>
+          <div style="margin-top:16px;font-size:9.5px;color:#475569">GFS AI Solver v16 · © 2026</div>
         </div>
       </div>
     </div>
-    <div class="gfs-footer"><span>⚡ GFS v15</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
+    <div class="gfs-footer"><span>⚡ GFS v16</span><span class="gfs-badge" id="gfs-footer-stat">idle</span></div>`;
   document.body.appendChild(panel);
 
   const $ = (id) => document.getElementById(id);
@@ -428,7 +418,6 @@
   $('gfs-clear').onclick = () => { let c = 0; document.querySelectorAll('div[role="radio"][aria-checked="true"]').forEach((el) => { el.click(); c++; }); log('Cleared ' + c + '.', 'warn'); };
   $('gfs-expl-toggle').onclick = () => { document.querySelectorAll('.gfs-tab').forEach((t) => t.classList.remove('active')); document.querySelectorAll('.gfs-tab-panel').forEach((p) => p.classList.remove('active')); document.querySelector('.gfs-tab[data-tab="explain"]').classList.add('active'); document.querySelector('.gfs-tab-panel[data-panel="explain"]').classList.add('active'); };
 
-  // ─── AI CALLERS ───
   const callGroq = async (key, model, prompt, persona) => {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
@@ -438,18 +427,15 @@
     const data = await res.json();
     return data.choices[0].message.content;
   };
-
   const callOpenRouter = async (key, model, prompt, persona) => {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Return JSON: {"answers":[{"i":<index>,"a":"<option text>"}]}.' }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.1, max_tokens: 2000 })
     });
-    if (!res.ok) throw new Error('OpenRouter ' + res.status + ': ' + (await res.text()).slice(0, 150));
+    if (!res.ok) throw new Error('OpenRouter ' + res.status);
     const data = await res.json();
-    if (!data.choices?.[0]?.message?.content) throw new Error('OpenRouter empty');
     return data.choices[0].message.content;
   };
-
   const callOpenAI = async (key, model, prompt, persona) => {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
@@ -459,23 +445,21 @@
     const data = await res.json();
     return data.choices[0].message.content;
   };
-
   const callCloudflare = async (token, model, prompt, persona) => {
     const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
     const res = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ messages: [{ role: 'system', content: persona + ' You answer MCQ. Return JSON object: {"answers":[{"i":<index>,"a":"<option text PERSIS>"}]}. Output JSON only.' }, { role: 'user', content: prompt }] })
+      body: JSON.stringify({ messages: [{ role: 'system', content: persona + ' You answer MCQ. Return JSON: {"answers":[{"i":<index>,"a":"<option text PERSIS>"}]}. Output JSON only.' }, { role: 'user', content: prompt }] })
     });
-    if (!res.ok) { const errText = await res.text(); throw new Error('Cloudflare ' + res.status + ': ' + errText.slice(0, 200)); }
+    if (!res.ok) throw new Error('Cloudflare ' + res.status + ': ' + (await res.text()).slice(0, 200));
     const data = await res.json();
-    if (!data.success) throw new Error('Cloudflare fail: ' + JSON.stringify(data.errors || data).slice(0, 150));
+    if (!data.success) throw new Error('Cloudflare fail');
     let text = data?.result?.response;
     if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
     if (!text) throw new Error('Cloudflare empty.');
     return text;
   };
 
-  // ─── CHAT CALLERS (free-form text, no JSON) ───
   const chatGroq = async (key, model, messages, persona) => {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
@@ -485,42 +469,38 @@
     const data = await res.json();
     return data.choices[0].message.content;
   };
-
   const chatOpenRouter = async (key, model, messages, persona) => {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
     });
-    if (!res.ok) throw new Error('OpenRouter ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    if (!res.ok) throw new Error('OpenRouter ' + res.status);
     const data = await res.json();
     return data.choices[0].message.content;
   };
-
   const chatOpenAI = async (key, model, messages, persona) => {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
     });
-    if (!res.ok) throw new Error('OpenAI ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    if (!res.ok) throw new Error('OpenAI ' + res.status);
     const data = await res.json();
     return data.choices[0].message.content;
   };
-
   const chatCloudflare = async (token, model, messages, persona) => {
     const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
     const res = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas.' }, ...messages] })
     });
-    if (!res.ok) { const errText = await res.text(); throw new Error('Cloudflare ' + res.status + ': ' + errText.slice(0, 200)); }
+    if (!res.ok) throw new Error('Cloudflare ' + res.status);
     const data = await res.json();
-    if (!data.success) throw new Error('Cloudflare fail: ' + JSON.stringify(data.errors || data).slice(0, 150));
+    if (!data.success) throw new Error('Cloudflare fail');
     let text = data?.result?.response;
     if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
     if (!text) throw new Error('Cloudflare empty.');
     return text;
   };
-
   const chatDispatch = async (provider, key, model, messages, persona) => {
     if (provider === 'groq') return chatGroq(key, model, messages, persona);
     if (provider === 'cloudflare') return chatCloudflare(key, model, messages, persona);
@@ -541,7 +521,6 @@
     chatMsgs.scrollTop = chatMsgs.scrollHeight;
     return div;
   };
-
   const appendTyping = () => {
     const div = document.createElement('div');
     div.className = 'gfs-msg ai';
@@ -555,16 +534,118 @@
     chatInput.style.height = 'auto';
     chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
   });
-
-  chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doChat(); }
-  });
-
+  chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doChat(); } });
   chatSend.onclick = doChat;
+
+  // ─── NUMBER INTENT PARSER ───
+  // Deteksi: kerjain nomor 1-5 / jawab no 3 / isi nomor 1-dst / solve no 2 sampai 8
+  const parseNumberIntent = (text) => {
+    const re = /(?:kerjain|kerjakan|jawab|jawabin|isi|isin|solve|do|gas|gasin)\s+(?:soal\s+)?(?:nomor|no|number|ke-)\s*(\d+)(?:\s*(?:-|–|—|sampai|sd|s\/d|to|hingga|sampé|ampe|ampek)\s*(\d+|dst|habis|akhir|semua|end|all|beres))?/i;
+    const m = text.match(re);
+    if (!m) return null;
+    const start = parseInt(m[1], 10);
+    if (!start || start < 1) return null;
+    let end = start;
+    if (m[2]) {
+      if (/^\d+$/.test(m[2])) end = parseInt(m[2], 10);
+      else end = Infinity;
+    }
+    if (end !== Infinity && end < start) end = start;
+    return { start, end };
+  };
+
+  // ─── AUTO-SOLVE BY RANGE (dipanggil dari chat) ───
+  async function solveRange(start, end) {
+    const key = $('gfs-key').value.trim();
+    const provider = $('gfs-provider').value;
+    const model = $('gfs-model').value;
+    if (!key) { appendMsg('API key kosong. Isi di tab Config.', 'err'); return; }
+
+    const allQ = parseQuestions();
+    if (!allQ.length) { appendMsg('Nggak ada soal ke-parse di halaman ini.', 'err'); return; }
+
+    const realEnd = end === Infinity ? allQ.length : Math.min(end, allQ.length);
+    if (start > allQ.length) { appendMsg('Nomor ' + start + ' di luar range. Total soal: ' + allQ.length, 'err'); return; }
+
+    const targets = allQ.slice(start - 1, realEnd);
+    if (!targets.length) { appendMsg('Range kosong.', 'err'); return; }
+
+    appendMsg('⚡ Auto-solve nomor ' + start + '–' + realEnd + ' · ' + targets.length + ' soal', 'sys');
+    const typing = appendTyping();
+
+    state.running = true; setStatus('running'); $('gfs-status').classList.add('busy'); chatSend.disabled = true;
+    log('⚡ Range solve ' + start + '-' + realEnd + ' via ' + provider + '/' + model, 'ai');
+
+    try {
+      const persona = PERSONALITY[provider] || '';
+      const wantExplain = $('gfs-opt-explain').checked;
+      const bs = BATCH_SIZE[provider] || 6;
+      const totalBatches = Math.ceil(targets.length / bs);
+      const allAnswers = [];
+      const allMatches = {};
+
+      for (let b = 0; b < totalBatches; b++) {
+        const s = b * bs;
+        const batch = targets.slice(s, s + bs);
+        const prompt = 'Jawab soal pilihan ganda berikut. Pilih opsi PALING TEPAT.\nBALAS HANYA JSON: {"answers":[{"i":<index>,"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan singkat>"' : '') + '}]}\n\nSOAL:\n' + batch.map((q) => '[' + q.idx + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
+
+        let raw;
+        if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
+        else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
+        else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
+        else raw = await callOpenAI(key, model, prompt, persona);
+
+        try {
+          const answers = parseResponse(raw);
+          answers.forEach(a => allAnswers.push(a));
+          log('Batch ' + (b + 1) + ' → ' + answers.length + ' jawaban', 'ok');
+        } catch (e) { log('Parse gagal batch ' + (b + 1), 'warn'); }
+        await sleep(500);
+      }
+
+      let clicked = 0, skipped = 0;
+      for (const a of allAnswers) {
+        const q = allQ[a.idx]; if (!q) continue;
+        const mt = findOption(q, a.answer);
+        allMatches[a.idx] = mt;
+        if (mt.el) {
+          if ($('gfs-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          await sleep(80); mt.el.click(); clicked++;
+        } else skipped++;
+        await sleep(120);
+      }
+
+      renderExplanations(allAnswers, allQ, allMatches);
+      typing.remove();
+      appendMsg('✓ Selesai. Nomor ' + start + '–' + realEnd + ' · Terisi: ' + clicked + '/' + targets.length + ' · Skip: ' + skipped, 'ai');
+      log('Range solve selesai: ' + clicked + '/' + targets.length, 'ok');
+      setStatus('done');
+    } catch (e) {
+      typing.remove();
+      appendMsg('ERROR: ' + e.message, 'err');
+      log('Range solve error: ' + e.message, 'err');
+      setStatus('error');
+    } finally {
+      state.running = false; chatSend.disabled = false; $('gfs-status').classList.remove('busy');
+    }
+  }
 
   async function doChat() {
     const text = chatInput.value.trim();
     if (!text || state.running) return;
+
+    // ─── CEK INTENT AUTO-SOLVE ───
+    const intent = parseNumberIntent(text);
+    if (intent) {
+      appendMsg(text, 'user');
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      log('Intent terdeteksi: nomor ' + intent.start + ' → ' + (intent.end === Infinity ? 'akhir' : intent.end), 'ai');
+      await solveRange(intent.start, intent.end);
+      return;
+    }
+
+    // ─── CHAT NORMAL ───
     const key = $('gfs-key').value.trim();
     const provider = $('gfs-provider').value;
     const model = $('gfs-model').value;
@@ -606,11 +687,11 @@
   $('gfs-chat-clear').onclick = () => {
     state.chatHistory = [];
     chatMsgs.innerHTML = '';
-    appendMsg('Chat dibersihkan. Mulai lagi.', 'ai');
+    appendMsg('Chat dibersihkan.', 'ai');
     log('Chat history cleared.', 'warn');
   };
 
-  // ─── SOLVE LOGIC ───
+  // ─── CORE SOLVE UTILS ───
   const parseResponse = (raw) => {
     let data;
     try { data = JSON.parse(raw); }
@@ -649,7 +730,7 @@
     if (cands.length === 1) return { el: cands[0].el, reason: 'contains-1' };
     if (cands.length > 1) {
       cands.sort((a, b) => { const oa = normalize(a.text), ob = normalize(b.text); const sA = oa.includes(nStrip) ? nStrip.length / oa.length : oa.length / nStrip.length; const sB = ob.includes(nStrip) ? nStrip.length / ob.length : ob.length / nStrip.length; return sB - sA; });
-      return { el: cands[0].el, reason: 'contains-best(' + cands.length + ')' };
+      return { el: cands[0].el, reason: 'contains-best' };
     }
     for (const opt of q.opts) {
       const no = normalize(opt.text);
@@ -674,6 +755,7 @@
     });
   };
 
+  // ─── SOLVE ALL BUTTON ───
   $('gfs-solve').onclick = async () => {
     if (state.running) return;
     const key = $('gfs-key').value.trim();
@@ -704,8 +786,7 @@
         const start = b * bs;
         const batch = questions.slice(start, start + bs);
         log('══ Batch ' + (b + 1) + '/' + totalBatches + ' ══', 'info');
-
-        const batchPrompt = 'Jawab soal pilihan ganda berikut. Untuk setiap soal pilih opsi PALING TEPAT.\nBALAS HANYA dengan JSON object:\n{"answers":[{"i":' + start + ',"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan>"' : '') + '}]}\n\nATURAN: "i" = nomor soal. "a" = teks opsi SAMA PERSIS.\n\nSOAL:\n' + batch.map((q, i) => '[' + (start + i) + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
+        const batchPrompt = 'Jawab soal pilihan ganda berikut.\nBALAS JSON: {"answers":[{"i":' + start + ',"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan>"' : '') + '}]}\n\nSOAL:\n' + batch.map((q, i) => '[' + (start + i) + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
 
         let raw;
         try {
@@ -713,18 +794,14 @@
           else if (provider === 'cloudflare') raw = await callCloudflare(key, model, batchPrompt, persona);
           else if (provider === 'openrouter') raw = await callOpenRouter(key, model, batchPrompt, persona);
           else raw = await callOpenAI(key, model, batchPrompt, persona);
-          log('Batch ' + (b + 1) + ' OK (' + raw.length + ' chars)', 'ok');
-        } catch (e) {
-          log('Batch ' + (b + 1) + ' gagal: ' + e.message, 'err');
-          await sleep(1500); continue;
-        }
+          log('Batch ' + (b + 1) + ' OK', 'ok');
+        } catch (e) { log('Batch ' + (b + 1) + ' gagal: ' + e.message, 'err'); await sleep(1500); continue; }
 
         try {
           const answers = parseResponse(raw);
           log('Batch ' + (b + 1) + ' → ' + answers.length + ' jawaban', 'ok');
           answers.forEach(a => allAnswers.push(a));
         } catch (e) { log('Parse gagal: ' + e.message, 'warn'); }
-
         await sleep(800);
       }
 
@@ -732,15 +809,13 @@
       for (let i = 0; i < allAnswers.length; i++) {
         const a = allAnswers[i];
         $('gfs-progress-fill').style.width = Math.round(((i + 1) / allAnswers.length) * 100) + '%';
-        const q = questions[a.idx];
-        if (!q) continue;
+        const q = questions[a.idx]; if (!q) continue;
         const mt = findOption(q, a.answer);
         allMatches[a.idx] = mt;
         log('Q' + a.idx + ' → "' + a.answer.slice(0, 40) + '" · ' + mt.reason, 'info');
         if (mt.el) {
           if ($('gfs-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          await sleep(100); mt.el.click();
-          clicked++; log('  ✓', 'ok');
+          await sleep(100); mt.el.click(); clicked++; log('  ✓', 'ok');
         } else { skipped++; log('  ✗', 'err'); }
         await sleep(150);
       }
@@ -751,9 +826,8 @@
       $('gfs-score-d').textContent = 'Provider: ' + provider + ' · Terisi: ' + clicked + ' · Skip: ' + skipped;
       setStatus('done');
       log('═══ SELESAI: ' + clicked + '/' + questions.length + ' ═══', 'ok');
-    } catch (e) {
-      log('ERROR: ' + e.message, 'err'); setStatus('error');
-    } finally {
+    } catch (e) { log('ERROR: ' + e.message, 'err'); setStatus('error'); }
+    finally {
       btn.disabled = false; btn.innerHTML = SVG.rocket + '<span>NYELESAIN SOAL</span>';
       state.running = false; $('gfs-status').classList.remove('busy');
       setTimeout(() => $('gfs-progress').classList.remove('active'), 1200);
@@ -770,5 +844,5 @@
 
   $('gfs-provider').value = 'groq';
   updateModels();
-  log('GFS v15 by Alip/Alrect. + Chat AI tab.', 'ok');
+  log('GFS v16 by Alip/Alrect. + Chat Auto-Solve by Number.', 'ok');
 })();
