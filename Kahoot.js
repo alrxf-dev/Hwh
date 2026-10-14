@@ -1,4 +1,4 @@
-/* GFS Kahoot Auto v7 — + XyloAPI DeepSeek-R1 */
+/* GFS Kahoot Auto v8 — Robust JSON Extractor */
 (function () {
   if (window.__GKH_LOADED__) { document.getElementById('gkh-root')?.remove(); document.getElementById('gkh-pill')?.remove(); window.__GKH_LOADED__ = false; return; }
   window.__GKH_LOADED__ = true;
@@ -15,11 +15,11 @@
   };
   const FALLBACK_CHAIN = ['groq', 'cloudflare', 'xylo', 'openrouter'];
   const PERSONA = {
-    groq: '[MCQ solver ahli. Baca soal TELITI. Pikirkan konsep sebelum jawab.]',
-    openrouter: '[MCQ solver ahli. Teliti.]',
-    cloudflare: '[MCQ solver ahli. Pikirkan konsep.]',
-    xylo: '[MCQ solver ahli. Baca soal TELITI. Pikirkan konsep sebelum jawab. Jawab dengan analisis singkat lalu pilih opsi.]',
-    openai: '[MCQ solver ahli. Teliti.]'
+    groq: 'You are a precise MCQ solver. Read carefully. Think concept first.',
+    openrouter: 'Precise MCQ solver. Teliti.',
+    cloudflare: 'Precise MCQ solver.',
+    xylo: 'Precise MCQ solver. Read carefully. Think concept first.',
+    openai: 'Precise MCQ solver.'
   };
   const MODELS = {
     groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
@@ -28,7 +28,7 @@
     xylo: ['deepseek-r1'],
     openai: ['gpt-4o-mini', 'gpt-4o']
   };
-  const S = { running: false, stealth: false, chat: [], observer: null, lastQ: '', lastProvider: null };
+  const S = { running: false, stealth: false, chat: [], observer: null, lastQ: '', lastProvider: null, miniTimer: null };
 
   const I = {
     bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="square"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
@@ -56,7 +56,7 @@
   #gkh-root, #gkh-root *, #gkh-pill { box-sizing: border-box !important; }
   #gkh-root, #gkh-root * { animation: none !important; transition: none !important; }
   #gkh-root{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;max-width:94vw;max-height:90vh;background:#1c0808;color:#fdf0f0;border:3px solid #000;box-shadow:8px 8px 0 0 #000,8px 8px 0 3px #ff2b2b,inset 0 0 0 1px #4a1010;font:12px/1.4 'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;display:flex;flex-direction:column;z-index:2147483647;overflow:hidden;letter-spacing:.1px}
-  #gkh-root.mini{width:200px !important;max-height:60px !important;overflow:hidden}
+  #gkh-root.mini{width:180px !important;max-height:48px !important;overflow:hidden}
   #gkh-root.mini .br-body,#gkh-root.mini .br-ft{display:none !important}
   .br-h{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:#ff2b2b;border-bottom:3px solid #000;flex-shrink:0;color:#fff}
   .br-h-l{display:flex;align-items:center;gap:8px}
@@ -211,7 +211,7 @@
 
   const load = document.createElement('div');
   load.id = 'gkh-load';
-  load.innerHTML = '<div id="gkh-load-in"><div id="gkh-load-logo">KAHOOT</div><div id="gkh-load-sub">AUTO · V7</div><div id="gkh-load-bar"><div id="gkh-load-fill"></div></div><div id="gkh-load-pct">0%</div></div>';
+  load.innerHTML = '<div id="gkh-load-in"><div id="gkh-load-logo">KAHOOT</div><div id="gkh-load-sub">AUTO · V8</div><div id="gkh-load-bar"><div id="gkh-load-fill"></div></div><div id="gkh-load-pct">0%</div></div>';
   document.body.appendChild(load);
   let pct = 0;
   const fillEl = document.getElementById('gkh-load-fill');
@@ -293,9 +293,9 @@
         <div class="mb8" id="KEYROW"><div class="br-lbl">${I.bolt}<span>API Key</span><span id="KH">auto</span></div><div class="br-iw"><input class="br-inp" id="KY" type="password"><button class="br-iey" id="EY">${I.eye}</button></div></div>
         <div class="mb8">
           <div class="br-sw"><div><div class="br-sw-t">Auto-Answer</div><div class="br-sw-d">Klik tile otomatis</div></div><label class="br-tg"><input type="checkbox" id="AA" checked><span class="br-ts"></span></label></div>
-          <div class="br-sw"><div><div class="br-sw-t">Auto-Minimize</div><div class="br-sw-d">Panel kecil pas solve</div></div><label class="br-tg"><input type="checkbox" id="AM" checked><span class="br-ts"></span></label></div>
+          <div class="br-sw"><div><div class="br-sw-t">Auto-Minimize</div><div class="br-sw-d">Panel kecil 500ms saat solve</div></div><label class="br-tg"><input type="checkbox" id="AM" checked><span class="br-ts"></span></label></div>
           <div class="br-sw"><div><div class="br-sw-t">Provider Fallback</div><div class="br-sw-d">Rotate kalau rate limit</div></div><label class="br-tg"><input type="checkbox" id="PF" checked><span class="br-ts"></span></label></div>
-          <div class="br-sw"><div><div class="br-sw-t">Fast Mode</div><div class="br-sw-d">Skip reasoning, ambil jawaban</div></div><label class="br-tg"><input type="checkbox" id="FM" checked><span class="br-ts"></span></label></div>
+          <div class="br-sw"><div><div class="br-sw-t">Fuzzy Match</div><div class="br-sw-d">Match kata kunci kalau exact gagal</div></div><label class="br-tg"><input type="checkbox" id="FM" checked><span class="br-ts"></span></label></div>
         </div>
         <div class="br-g2"><button class="br-btn yel sm" id="SV">Save</button><button class="br-btn wht sm" id="LD">Load</button></div>
       </div>
@@ -309,19 +309,19 @@
           <div class="br-cr-n">Alip / Alrect</div>
           <div class="br-cr-r">Developer</div>
           <a class="br-cr-w" href="https://wa.me/6282192401340" target="_blank">${I.wa}<div class="br-cr-w-t"><span class="br-cr-w-l">Order Now</span><span class="br-cr-w-n">+62 821-9240-1340</span></div></a>
-          <div class="br-cr-f">GFS KAHOOT AUTO v7 · 2026</div>
+          <div class="br-cr-f">GFS KAHOOT AUTO v8 · 2026</div>
         </div>
       </div>
     </div>
   </div>
-  <div class="br-ft"><span>⚡ v7</span><span class="br-bg" id="FST">idle</span></div>`;
+  <div class="br-ft"><span>⚡ v8</span><span class="br-bg" id="FST">idle</span></div>`;
   document.body.appendChild(root);
 
   function boot() {
     root.style.display = 'flex';
     initHandlers();
-    log('GKH Auto v7 loaded.', 'ok');
-    log('+ XyloAPI DeepSeek-R1 (no key)', 'ai');
+    log('GKH Auto v8 loaded.', 'ok');
+    log('+ Robust JSON extractor + fuzzy fallback', 'ai');
   }
 
   const $ = id => document.getElementById(id);
@@ -342,7 +342,7 @@
   const setSt = t => { const b = $('FST'); if (!b) return; b.textContent = t; b.className = 'br-bg'; if (t === 'running') b.classList.add('run'); else if (t === 'error') b.classList.add('er'); else if (t === 'done') b.classList.add('dn'); };
 
   // ═══════════════════════════════════════════
-  // CLICK SIMULATOR (unchanged from v6)
+  // CLICK SIMULATOR
   // ═══════════════════════════════════════════
   function simulateClick(el) {
     if (!el) return false;
@@ -425,23 +425,141 @@
   const parseAll = () => { const c = parse(); return c.opts.length >= 2 ? [c] : []; };
 
   // ═══════════════════════════════════════════
+  // ROBUST JSON EXTRACTOR (v8 core fix)
+  // ═══════════════════════════════════════════
+  function extractJSON(raw) {
+    if (!raw) return null;
+    let text = String(raw);
+
+    // Strip markdown code fences
+    text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+    // Attempt 1: direct parse
+    try { return JSON.parse(text); } catch {}
+
+    // Attempt 2: find balanced JSON object
+    const extractBalanced = (str, open, close) => {
+      let depth = 0, start = -1;
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === open) { if (depth === 0) start = i; depth++; }
+        else if (str[i] === close) { depth--; if (depth === 0 && start >= 0) return str.slice(start, i + 1); }
+      }
+      return null;
+    };
+
+    // Try outermost { }
+    let candidate = extractBalanced(text, '{', '}');
+    if (candidate) { try { return JSON.parse(candidate); } catch {} }
+
+    // Try [ ]
+    candidate = extractBalanced(text, '[', ']');
+    if (candidate) { try { return JSON.parse(candidate); } catch {} }
+
+    // Attempt 3: greedy regex
+    const rxObj = text.match(/\{[\s\S]*\}/);
+    if (rxObj) { try { return JSON.parse(rxObj[0]); } catch {} }
+    const rxArr = text.match(/\[[\s\S]*\]/);
+    if (rxArr) { try { return JSON.parse(rxArr[0]); } catch {} }
+
+    // Attempt 4: fix common issues
+    let fixed = text
+      .replace(/'/g, '"')
+      .replace(/,\s*}/g, '}')
+      .replace(/,\s*]/g, ']')
+      .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    candidate = extractBalanced(fixed, '{', '}') || extractBalanced(fixed, '[', ']');
+    if (candidate) { try { return JSON.parse(candidate); } catch {} }
+
+    return null;
+  }
+
+  function extractAnswerFields(parsed) {
+    if (!parsed) return [];
+    // Normalize: try many shapes
+    let list = [];
+    if (Array.isArray(parsed)) list = parsed;
+    else if (typeof parsed === 'object') {
+      // Direct: {i, a, reason}
+      if (parsed.a || parsed.answer || parsed.response || parsed.text) {
+        list = [parsed];
+      }
+      // Wrapped: {answers: [...]}, {data: [...]}, {result: [...]}
+      else {
+        for (const k of ['answers', 'data', 'result', 'response', 'answer', 'choices', 'options', 'output']) {
+          if (parsed[k]) {
+            if (Array.isArray(parsed[k])) { list = parsed[k]; break; }
+            if (typeof parsed[k] === 'object') { list = [parsed[k]]; break; }
+            if (typeof parsed[k] === 'string') { list = [{ answer: parsed[k] }]; break; }
+          }
+        }
+      }
+    }
+    // Map to {idx, answer, reason}
+    return list.map((x, i) => {
+      if (!x) return null;
+      const idx = Number.isInteger(x.i) ? x.i : Number.isInteger(x.idx) ? x.idx : Number.isInteger(x.index) ? x.index : i;
+      const a = x.a || x.answer || x.response || x.text || x.choice || x.value || x.content;
+      const reason = x.reason || x.explanation || x.why || '';
+      if (typeof a !== 'string' || !a.trim()) return null;
+      return { idx, answer: a.trim(), reason: typeof reason === 'string' ? reason : '' };
+    }).filter(Boolean);
+  }
+
+  // Last resort: extract answer from free text using option keys
+  function extractAnswerFromText(text, options) {
+    if (!text) return null;
+    const t = String(text);
+    const normT = norm(t);
+
+    // Try to find any option's text mentioned in the response
+    const hits = [];
+    for (const opt of options) {
+      const n = norm(opt.text);
+      if (!n) continue;
+      // Check for exact substring
+      if (normT.includes(n)) {
+        hits.push({ opt, score: n.length, how: 'substring' });
+        continue;
+      }
+      // Check for word overlap
+      const words = n.split(' ').filter(w => w.length > 4);
+      if (words.length > 0) {
+        const matched = words.filter(w => normT.includes(w)).length;
+        if (matched === words.length) hits.push({ opt, score: words.length * 100 + n.length, how: 'words' });
+        else if (matched >= Math.ceil(words.length * 0.7)) hits.push({ opt, score: matched * 50, how: 'partial' });
+      }
+    }
+
+    if (hits.length === 0) {
+      // Try to find quoted phrase
+      const q = t.match(/[""]([^""]{2,80})[""]/);
+      if (q) return q[1];
+      // Answer: line
+      const line = t.match(/(?:answer|jawaban|opsi|pilihan|correct)[\s:]*([^\n.]{1,80})/i);
+      if (line) return line[1].trim();
+      return null;
+    }
+
+    // Pick highest score
+    hits.sort((a, b) => b.score - a.score);
+    return hits[0].opt.text;
+  }
+
+  // ═══════════════════════════════════════════
   // AI CALLERS
   // ═══════════════════════════════════════════
   const isRateLimit = (err) => /429|rate limit|quota|exceeded/i.test(err.message || '');
 
   async function callProvider(prov, key, model, prompt, persona, chatMode = false) {
-    // XyloAPI — GET, no key, single prompt param
+    // XyloAPI — GET
     if (prov === 'xylo') {
-      const fullPrompt = (chatMode ? persona + ' ' : persona + ' ') + prompt;
+      const fullPrompt = persona + '\n\n' + prompt;
       const url = XYLO_BASE + '?prompt=' + encodeURIComponent(fullPrompt);
       const r = await fetch(url, { method: 'GET' });
       if (!r.ok) throw new Error('Xylo ' + r.status);
       const d = await r.json();
       if (!d.success) throw new Error('Xylo: ' + (d.error || 'fail'));
-      // Return wrapped for consistent parsing
-      const text = d.data?.response || '';
-      const reasoning = d.data?.reasoning || '';
-      return JSON.stringify({ answers: [{ i: 0, a: extractAnswerFromText(text, prompt), reason: (reasoning || text).slice(0, 200) }] });
+      return d.data?.response || '';
     }
 
     const sys = chatMode ? persona + ' Asisten chat cerdas. Jawab ringkas.' : persona;
@@ -457,34 +575,13 @@
     return d.choices[0].message.content;
   }
 
-  // Extract answer from free-text response (Xylo returns natural text)
-  function extractAnswerFromText(text, originalPrompt) {
-    if (!text) return '';
-    // Try JSON first
-    try {
-      const m = text.match(/\{[\s\S]*\}/);
-      if (m) { const j = JSON.parse(m[0]); if (j.a || j.answer) return j.a || j.answer; }
-    } catch {}
-    // Try to find quoted answer
-    const q = text.match(/[""]([^""]{2,80})[""]/);
-    if (q) return q[1];
-    // Try to find "answer is X"
-    const ans = text.match(/(?:answer|jawaban|opsi|pilihan)[\s:]*([^\n.]{1,80})/i);
-    if (ans) return ans[1].trim();
-    // Fallback: last non-empty line
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    return lines[lines.length - 1] || text.slice(0, 80);
-  }
-
   async function smartCall(prompt, persona, chatMode = false) {
     const primary = $('PR').value;
     const useFallback = $('PF').checked;
     const chain = useFallback ? [primary, ...FALLBACK_CHAIN.filter(p => p !== primary)] : [primary];
-
     for (const prov of chain) {
       const key = prov === primary ? $('KY').value.trim() : (KEYS[prov] || '');
       if (prov !== 'xylo' && !key) { log('Skip ' + prov + ' (no key)', 'wn'); continue; }
-
       const models = MODELS[prov] || [];
       for (const model of models) {
         try {
@@ -506,25 +603,10 @@
     throw new Error('Semua provider gagal.');
   }
 
-  const parseRes = raw => {
-    let d;
-    try { d = JSON.parse(raw); } catch {
-      const a = raw.match(/\[[\s\S]*\]/), o = raw.match(/\{[\s\S]*\}/);
-      if (a) d = JSON.parse(a[0]); else if (o) d = JSON.parse(o[0]); else throw new Error('Not JSON');
-    }
-    const list = Array.isArray(d) ? d : (d.answers || d.data || []);
-    if (!Array.isArray(list)) throw new Error('Bad fmt');
-    return list.map(x => {
-      if (!x) return null;
-      const idx = Number.isInteger(x.i) ? x.i : (Number.isInteger(x.idx) ? x.idx : null);
-      if (idx === null) return null;
-      const a = x.a || x.answer || null;
-      if (typeof a !== 'string') return null;
-      return { idx, answer: a, reason: x.reason || '' };
-    }).filter(Boolean);
-  };
-
-  const findOpt = (q, ans) => {
+  // ═══════════════════════════════════════════
+  // SOLVE
+  // ═══════════════════════════════════════════
+  const findOpt = (q, ans, useFuzzy = true) => {
     const raw = String(ans || '').trim(); if (!raw) return { el: null, r: 'empty' };
     let m = q.opts.find(o => o.text === raw); if (m) return { el: m.el, r: 'exact' };
     const st = raw.replace(/^\s*[A-Za-z0-9][.)\-:]\s*/, '').trim();
@@ -532,9 +614,13 @@
     const nr = norm(raw), ns = norm(st);
     m = q.opts.find(o => norm(o.text) === nr); if (m) return { el: m.el, r: 'normal' };
     if (ns !== nr) { m = q.opts.find(o => norm(o.text) === ns); if (m) return { el: m.el, r: 'normal-strip' }; }
+    if (!useFuzzy) return { el: null, r: 'no-match' };
     const cds = q.opts.filter(o => { const n = norm(o.text); return n.length > 0 && ns.length >= n.length * 0.5 && (n.includes(ns) || ns.includes(n)); });
     if (cds.length === 1) return { el: cds[0].el, r: 'contains' };
-    if (cds.length > 1) return { el: cds[0].el, r: 'contains-best' };
+    if (cds.length > 1) {
+      cds.sort((a, b) => { const oa = norm(a.text), ob = norm(b.text); const sA = oa.includes(ns) ? ns.length / oa.length : oa.length / ns.length; const sB = ob.includes(ns) ? ns.length / ob.length : ob.length / ns.length; return sB - sA; });
+      return { el: cds[0].el, r: 'contains-best' };
+    }
     for (const opt of q.opts) {
       const no = norm(opt.text);
       const words = no.split(' ').filter(w => w.length > 3);
@@ -557,7 +643,6 @@
     });
   };
 
-  // ─── SOLVE ───
   async function solveCurrent() {
     if (S.running) return false;
     const qs_ = parseAll();
@@ -567,28 +652,50 @@
     S.running = true; setSt('running'); $('DOT').classList.add('run');
     const primary = $('PR').value;
     const persona = PERSONA[primary] || PERSONA.groq;
-    if ($('AM').checked) { root.classList.add('mini'); await sleep(100); }
+    const useAM = $('AM').checked;
+    const useFuzzy = $('FM').checked;
+
+    if (useAM) { root.classList.add('mini'); await sleep(80); }
 
     try {
       let prompt;
       if (primary === 'xylo') {
-        // Xylo free-text — minta jawab + alasan
-        prompt = 'Soal: ' + cur.qText + '\n\nPilihan:\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nJawab dengan format: JAWABAN: <teks opsi persis>\nALASAN: <1 kalimat>';
+        prompt = 'Q: ' + cur.qText + '\n\nOptions:\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nAnswer format: JAWABAN: <exact option text>\nALASAN: <one sentence>';
       } else {
-        prompt = 'Baca dan jawab soal dengan TELITI. Pilih opsi paling tepat.\n\nSOAL: ' + cur.qText + '\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nJSON: {"answers":[{"i":0,"a":"<teks opsi PERSIS>","reason":"<1 kalimat>"}]}';
+        prompt = 'Read carefully and answer the MCQ. Pick the MOST CORRECT option.\n\nQ: ' + cur.qText + '\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nReturn JSON: {"answers":[{"i":0,"a":"<EXACT option text>","reason":"<one sentence>"}]}';
       }
-      const result = await smartCall(prompt, persona);
-      let answers = [];
-      try { answers = parseRes(result.text); } catch {
-        // Fallback: extract from free-text
-        const extracted = extractAnswerFromText(result.text, prompt);
-        answers = [{ idx: 0, answer: extracted, reason: result.text.slice(0, 150) }];
-      }
-      const a = answers[0];
-      if (!a) throw new Error('No answer');
 
-      const m = findOpt(cur, a.answer);
-      log('→ "' + a.answer.slice(0, 50) + '" · ' + m.r + ' via ' + result.provider, 'ai');
+      const result = await smartCall(prompt, persona);
+      let answerObj = null;
+
+      // Attempt 1: robust JSON extraction
+      const parsed = extractJSON(result.text);
+      if (parsed) {
+        const fields = extractAnswerFields(parsed);
+        if (fields.length > 0) {
+          answerObj = { idx: 0, answer: fields[0].answer, reason: fields[0].reason || '' };
+          log('✓ JSON parsed: "' + answerObj.answer.slice(0, 50) + '"', 'ok');
+        }
+      }
+
+      // Attempt 2: text extraction
+      if (!answerObj) {
+        const extracted = extractAnswerFromText(result.text, cur.opts);
+        if (extracted) {
+          answerObj = { idx: 0, answer: extracted, reason: result.text.slice(0, 150) };
+          log('✓ Text extract: "' + extracted.slice(0, 50) + '"', 'wn');
+        }
+      }
+
+      if (!answerObj) {
+        log('✗ Gagal extract jawaban dari response', 'er');
+        log('Raw (200c): ' + result.text.slice(0, 200), 'wn');
+        throw new Error('No answer extracted');
+      }
+
+      const m = findOpt(cur, answerObj.answer, useFuzzy);
+      log('→ Match: ' + m.r + ' · via ' + result.provider, 'ai');
+
       if (m.el) {
         simulateClick(m.el);
         await sleep(120);
@@ -597,24 +704,24 @@
           if (up && up !== m.el) simulateClick(up);
         }
         log('✓ CLICKED ' + (verifyClick(m.el) ? 'VERIFIED' : '(unverified)'), 'ok');
-        renderEx([{ ...a, idx: 0 }], [cur], { 0: m }, result.provider + '/' + result.model);
+        renderEx([answerObj], [cur], { 0: m }, result.provider + '/' + result.model);
         $('SCD').classList.add('on');
         $('SCV').textContent = '1/1';
         $('SCDD').textContent = result.provider + ' · ' + m.r;
         setSt('done');
         S.running = false; $('DOT').classList.remove('run');
-        if ($('AM').checked) setTimeout(() => root.classList.remove('mini'), 300);
+        if (useAM) setTimeout(() => root.classList.remove('mini'), 400);
         return true;
       } else {
-        log('✗ no-match: ' + a.answer.slice(0, 40), 'er');
+        log('✗ no-match: "' + answerObj.answer.slice(0, 40) + '"', 'er');
         setSt('error'); S.running = false; $('DOT').classList.remove('run');
-        if ($('AM').checked) root.classList.remove('mini');
+        if (useAM) root.classList.remove('mini');
         return false;
       }
     } catch (e) {
       log('Err: ' + e.message, 'er');
       setSt('error'); S.running = false; $('DOT').classList.remove('run');
-      if ($('AM').checked) root.classList.remove('mini');
+      if (useAM) root.classList.remove('mini');
       return false;
     }
   }
@@ -673,8 +780,8 @@
     };
     $('PR').onchange = updateModels;
     $('MD').onchange = () => { $('CM').textContent = $('PR').value.toUpperCase() + ' · ' + $('MD').value; };
-    $('SV').onclick = () => { localStorage.setItem('gkh7_cfg', JSON.stringify({ p: $('PR').value, m: $('MD').value, k: $('KY').value, a: $('AA').checked, am: $('AM').checked, pf: $('PF').checked, fm: $('FM').checked })); log('Saved.', 'ok'); };
-    $('LD').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gkh7_cfg') || '{}'); if (c.p) { $('PR').value = c.p; updateModels(); } if (c.m) $('MD').value = c.m; if (c.k && !KEYS[$('PR').value] && $('PR').value !== 'xylo') $('KY').value = c.k; if (c.a !== undefined) $('AA').checked = c.a; if (c.am !== undefined) $('AM').checked = c.am; if (c.pf !== undefined) $('PF').checked = c.pf; if (c.fm !== undefined) $('FM').checked = c.fm; log('Loaded.', 'ok'); } catch { log('Load gagal', 'er'); } };
+    $('SV').onclick = () => { localStorage.setItem('gkh8_cfg', JSON.stringify({ p: $('PR').value, m: $('MD').value, k: $('KY').value, a: $('AA').checked, am: $('AM').checked, pf: $('PF').checked, fm: $('FM').checked })); log('Saved.', 'ok'); };
+    $('LD').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gkh8_cfg') || '{}'); if (c.p) { $('PR').value = c.p; updateModels(); } if (c.m) $('MD').value = c.m; if (c.k && !KEYS[$('PR').value] && $('PR').value !== 'xylo') $('KY').value = c.k; if (c.a !== undefined) $('AA').checked = c.a; if (c.am !== undefined) $('AM').checked = c.am; if (c.pf !== undefined) $('PF').checked = c.pf; if (c.fm !== undefined) $('FM').checked = c.fm; log('Loaded.', 'ok'); } catch { log('Load gagal', 'er'); } };
     $('EXB').onclick = () => { const t = [...$('LG').children].map(c => c.textContent).join('\n'); const b = new Blob([t], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gkh-log.txt'; a.click(); };
     $('CLB').onclick = () => { $('LG').innerHTML = ''; };
 
@@ -713,12 +820,11 @@
       log('═══ Test XyloAPI ═══', 'ai');
       try {
         const t0 = Date.now();
-        const r = await fetch(XYLO_BASE + '?prompt=' + encodeURIComponent('Reply with exactly one word: OK'), { method: 'GET' });
+        const r = await fetch(XYLO_BASE + '?prompt=' + encodeURIComponent('Reply exactly: OK'), { method: 'GET' });
         const d = await r.json();
         log('Status: ' + r.status + ' · ' + (Date.now() - t0) + 'ms', 'ok');
         log('Success: ' + d.success, d.success ? 'ok' : 'er');
         if (d.data?.response) log('Response: ' + d.data.response.slice(0, 100), 'ai');
-        if (d.data?.reasoning) log('Reasoning: ' + d.data.reasoning.slice(0, 100), 'in');
       } catch (e) { log('Xylo err: ' + e.message, 'er'); }
     };
 
