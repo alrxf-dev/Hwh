@@ -1,27 +1,31 @@
-/* GFS Kahoot Auto v6 — Provider Rotation + ElementFromPoint Click */
+/* GFS Kahoot Auto v7 — + XyloAPI DeepSeek-R1 */
 (function () {
   if (window.__GKH_LOADED__) { document.getElementById('gkh-root')?.remove(); document.getElementById('gkh-pill')?.remove(); window.__GKH_LOADED__ = false; return; }
   window.__GKH_LOADED__ = true;
 
   const CF_ACC = '7f83137df22c15f252e1da2ee2214a6c';
   const CF_TOK = 'cfut_2WkAuydB6WzZXAzdSIGz3kI5AxyEQVDOqllfGshz3568c7ff';
+  const XYLO_BASE = 'https://xyloapi.qzz.io/api/ai-chat/deepseek-r1';
+
   const KEYS = {
     groq: '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',
     openrouter: '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',
-    cloudflare: CF_TOK
+    cloudflare: CF_TOK,
+    xylo: ''
   };
-  // Provider fallback chain
-  const FALLBACK_CHAIN = ['groq', 'cloudflare', 'openrouter'];
+  const FALLBACK_CHAIN = ['groq', 'cloudflare', 'xylo', 'openrouter'];
   const PERSONA = {
-    groq: '[MCQ solver ahli. Baca soal dengan TELITI. Jangan asal pilih. Contoh: "What is difference between speed and velocity" — jawabannya "Direction" karena velocity punya arah, speed nggak. Pikirkan konsepnya sebelum jawab.]',
-    openrouter: '[MCQ solver ahli. Baca soal dengan TELITI. Pikirkan konsep.]',
-    cloudflare: '[MCQ solver ahli. Pikirkan konsep soal sebelum jawab.]',
-    openai: '[Academic MCQ solver. Teliti.]'
+    groq: '[MCQ solver ahli. Baca soal TELITI. Pikirkan konsep sebelum jawab.]',
+    openrouter: '[MCQ solver ahli. Teliti.]',
+    cloudflare: '[MCQ solver ahli. Pikirkan konsep.]',
+    xylo: '[MCQ solver ahli. Baca soal TELITI. Pikirkan konsep sebelum jawab. Jawab dengan analisis singkat lalu pilih opsi.]',
+    openai: '[MCQ solver ahli. Teliti.]'
   };
   const MODELS = {
     groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
     openrouter: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-super-120b-a12b:free'],
     cloudflare: ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct'],
+    xylo: ['deepseek-r1'],
     openai: ['gpt-4o-mini', 'gpt-4o']
   };
   const S = { running: false, stealth: false, chat: [], observer: null, lastQ: '', lastProvider: null };
@@ -90,6 +94,7 @@
   .br-btn.wht{background:#fdf0f0;color:#000;box-shadow:4px 4px 0 #000}
   .br-btn.dar{background:#1a0505;color:#f87171;box-shadow:4px 4px 0 #000}
   .br-btn.grn{background:#22c55e;color:#000;box-shadow:4px 4px 0 #000,inset 0 -3px 0 rgba(0,0,0,.2)}
+  .br-btn.pur{background:#8b5cf6;color:#fff;text-shadow:2px 2px 0 #000;box-shadow:4px 4px 0 #000,inset 0 -3px 0 rgba(0,0,0,.3)}
   .br-btn.sm{padding:7px;font-size:10px;box-shadow:3px 3px 0 #000}
   .br-btn.sm svg{width:12px;height:12px}
   .br-btn.sm:active{box-shadow:0 0 0 #000;transform:translate(3px,3px)}
@@ -206,7 +211,7 @@
 
   const load = document.createElement('div');
   load.id = 'gkh-load';
-  load.innerHTML = '<div id="gkh-load-in"><div id="gkh-load-logo">KAHOOT</div><div id="gkh-load-sub">AUTO · V6</div><div id="gkh-load-bar"><div id="gkh-load-fill"></div></div><div id="gkh-load-pct">0%</div></div>';
+  load.innerHTML = '<div id="gkh-load-in"><div id="gkh-load-logo">KAHOOT</div><div id="gkh-load-sub">AUTO · V7</div><div id="gkh-load-bar"><div id="gkh-load-fill"></div></div><div id="gkh-load-pct">0%</div></div>';
   document.body.appendChild(load);
   let pct = 0;
   const fillEl = document.getElementById('gkh-load-fill');
@@ -256,9 +261,10 @@
         <div class="br-pers" id="PN">—</div>
         <button class="br-btn grn mb8" id="AUTO">${I.loop}<span>MULAI AUTO</span></button>
         <button class="br-btn red mb8" id="GO">${I.play}<span>Jawab Sekarang</span></button>
+        <button class="br-btn pur mb8" id="XYLO">${I.bolt}<span>Test XyloAPI</span></button>
         <div class="br-g3 mt8">
           <button class="br-btn wht sm" id="SC">${I.scan}<span>Scan</span></button>
-          <button class="br-btn yel sm" id="TEST">${I.bolt}<span>Tes</span></button>
+          <button class="br-btn yel sm" id="TEST">${I.bolt}<span>Tes Klik</span></button>
           <button class="br-btn dar sm" id="RS">${I.trash}<span>Rst</span></button>
         </div>
         <div class="br-sc" id="SCD">
@@ -282,13 +288,14 @@
         <div class="br-exl" id="EX"><div style="color:#a86a6a;font-size:10px;text-align:center;padding:20px;font-weight:700">BELUM ADA DATA</div></div>
       </div>
       <div class="br-p" data-p="settings">
-        <div class="mb8"><div class="br-lbl">${I.spark}<span>Provider Utama</span></div><select class="br-sel" id="PR"><option value="groq">Groq</option><option value="cloudflare">Cloudflare</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
+        <div class="mb8"><div class="br-lbl">${I.spark}<span>Provider Utama</span></div><select class="br-sel" id="PR"><option value="groq">Groq</option><option value="cloudflare">Cloudflare</option><option value="xylo">XyloAPI (DeepSeek-R1)</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
         <div class="mb8"><div class="br-lbl">${I.code}<span>Model</span></div><select class="br-sel" id="MD"></select></div>
-        <div class="mb8"><div class="br-lbl">${I.bolt}<span>API Key</span><span id="KH">auto</span></div><div class="br-iw"><input class="br-inp" id="KY" type="password"><button class="br-iey" id="EY">${I.eye}</button></div></div>
+        <div class="mb8" id="KEYROW"><div class="br-lbl">${I.bolt}<span>API Key</span><span id="KH">auto</span></div><div class="br-iw"><input class="br-inp" id="KY" type="password"><button class="br-iey" id="EY">${I.eye}</button></div></div>
         <div class="mb8">
           <div class="br-sw"><div><div class="br-sw-t">Auto-Answer</div><div class="br-sw-d">Klik tile otomatis</div></div><label class="br-tg"><input type="checkbox" id="AA" checked><span class="br-ts"></span></label></div>
           <div class="br-sw"><div><div class="br-sw-t">Auto-Minimize</div><div class="br-sw-d">Panel kecil pas solve</div></div><label class="br-tg"><input type="checkbox" id="AM" checked><span class="br-ts"></span></label></div>
           <div class="br-sw"><div><div class="br-sw-t">Provider Fallback</div><div class="br-sw-d">Rotate kalau rate limit</div></div><label class="br-tg"><input type="checkbox" id="PF" checked><span class="br-ts"></span></label></div>
+          <div class="br-sw"><div><div class="br-sw-t">Fast Mode</div><div class="br-sw-d">Skip reasoning, ambil jawaban</div></div><label class="br-tg"><input type="checkbox" id="FM" checked><span class="br-ts"></span></label></div>
         </div>
         <div class="br-g2"><button class="br-btn yel sm" id="SV">Save</button><button class="br-btn wht sm" id="LD">Load</button></div>
       </div>
@@ -302,19 +309,19 @@
           <div class="br-cr-n">Alip / Alrect</div>
           <div class="br-cr-r">Developer</div>
           <a class="br-cr-w" href="https://wa.me/6282192401340" target="_blank">${I.wa}<div class="br-cr-w-t"><span class="br-cr-w-l">Order Now</span><span class="br-cr-w-n">+62 821-9240-1340</span></div></a>
-          <div class="br-cr-f">GFS KAHOOT AUTO v6 · 2026</div>
+          <div class="br-cr-f">GFS KAHOOT AUTO v7 · 2026</div>
         </div>
       </div>
     </div>
   </div>
-  <div class="br-ft"><span>⚡ v6</span><span class="br-bg" id="FST">idle</span></div>`;
+  <div class="br-ft"><span>⚡ v7</span><span class="br-bg" id="FST">idle</span></div>`;
   document.body.appendChild(root);
 
   function boot() {
     root.style.display = 'flex';
     initHandlers();
-    log('GKH Auto v6 loaded.', 'ok');
-    log('Fix: provider rotate + elementFromPoint click', 'ai');
+    log('GKH Auto v7 loaded.', 'ok');
+    log('+ XyloAPI DeepSeek-R1 (no key)', 'ai');
   }
 
   const $ = id => document.getElementById(id);
@@ -335,75 +342,41 @@
   const setSt = t => { const b = $('FST'); if (!b) return; b.textContent = t; b.className = 'br-bg'; if (t === 'running') b.classList.add('run'); else if (t === 'error') b.classList.add('er'); else if (t === 'done') b.classList.add('dn'); };
 
   // ═══════════════════════════════════════════
-  // CLICK — elementFromPoint + full dispatch
+  // CLICK SIMULATOR (unchanged from v6)
   // ═══════════════════════════════════════════
   function simulateClick(el) {
     if (!el) return false;
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
-
-    // 1. elementFromPoint — hits the actual topmost element (React inner node)
     let hit = null;
     try { hit = document.elementFromPoint(cx, cy); } catch {}
-
-    // 2. Collect candidate targets: original, hit, closest button/role, parents
     const targets = new Set();
     targets.add(el);
     if (hit && hit !== el) targets.add(hit);
     const closeBtn = el.closest('button, [role="button"], a[role="button"], [tabindex]');
     if (closeBtn) targets.add(closeBtn);
     let p = el.parentElement;
-    for (let i = 0; i < 4 && p; i++) {
-      targets.add(p);
-      p = p.parentElement;
-    }
-
+    for (let i = 0; i < 4 && p; i++) { targets.add(p); p = p.parentElement; }
     const mk = (type, Ctor) => {
-      try {
-        return new Ctor(type, {
-          bubbles: true, cancelable: true, composed: true,
-          view: window, detail: 1,
-          clientX: cx, clientY: cy, screenX: cx, screenY: cy,
-          button: 0, buttons: 1,
-          pointerId: 1, pointerType: 'mouse', isPrimary: true,
-          width: 1, height: 1, pressure: 0.5
-        });
-      } catch { return null; }
+      try { return new Ctor(type, { bubbles: true, cancelable: true, composed: true, view: window, detail: 1, clientX: cx, clientY: cy, screenX: cx, screenY: cy, button: 0, buttons: 1, pointerId: 1, pointerType: 'mouse', isPrimary: true, width: 1, height: 1, pressure: 0.5 }); } catch { return null; }
     };
-
     for (const t of targets) {
       if (!t || !t.dispatchEvent) continue;
       try {
-        // React-friendly event order
-        const events = [
-          ['pointerover', PointerEvent],
-          ['pointerenter', PointerEvent],
-          ['pointerdown', PointerEvent],
-          ['mousedown', MouseEvent],
-          ['pointerup', PointerEvent],
-          ['mouseup', MouseEvent],
-          ['click', MouseEvent]
-        ];
-        for (const [type, Ctor] of events) {
-          const ev = mk(type, Ctor);
-          if (ev) t.dispatchEvent(ev);
-        }
+        const events = [['pointerover', PointerEvent], ['pointerenter', PointerEvent], ['pointerdown', PointerEvent], ['mousedown', MouseEvent], ['pointerup', PointerEvent], ['mouseup', MouseEvent], ['click', MouseEvent]];
+        for (const [type, Ctor] of events) { const ev = mk(type, Ctor); if (ev) t.dispatchEvent(ev); }
       } catch {}
       try { t.click(); } catch {}
       try {
-        const ts = new TouchEvent('touchstart', { bubbles: true, cancelable: true });
-        t.dispatchEvent(ts);
-        const te = new TouchEvent('touchend', { bubbles: true, cancelable: true });
-        t.dispatchEvent(te);
+        const ts = new TouchEvent('touchstart', { bubbles: true, cancelable: true }); t.dispatchEvent(ts);
+        const te = new TouchEvent('touchend', { bubbles: true, cancelable: true }); t.dispatchEvent(te);
       } catch {}
     }
     return true;
   }
-
   function verifyClick(el) {
     if (!el) return false;
-    // Check element and its ancestors for selected state
     let cur = el;
     for (let i = 0; i < 5 && cur; i++) {
       const cls = (cur.className || '').toString().toLowerCase();
@@ -412,21 +385,19 @@
       if (cur.getAttribute && cur.getAttribute('aria-selected') === 'true') return true;
       cur = cur.parentElement;
     }
-    // Broader: check if any tile in viewport got selected recently
     const anySel = document.querySelector('[aria-checked="true"], [class*="selected"], [class*="Selected"]');
     return !!anySel;
   }
 
-  // ─── KAHOOT TILE PARSER ───
+  // ═══════════════════════════════════════════
+  // KAHOOT PARSER
+  // ═══════════════════════════════════════════
   const KC = { red: [225, 27, 60], blue: [19, 104, 206], yellow: [216, 158, 0], green: [38, 137, 12], purple: [70, 23, 143], teal: [17, 138, 130] };
   const cm = (rgb, t, tol = 40) => { if (!rgb) return false; const m = rgb.match(/\d+/g); if (!m || m.length < 3) return false; return Math.abs(+m[0] - t[0]) < tol && Math.abs(+m[1] - t[1]) < tol && Math.abs(+m[2] - t[2]) < tol; };
   const isTile = (el) => { if (!el || el.offsetParent === null) return false; const r = el.getBoundingClientRect(); if (r.width < 60 || r.height < 60) return false; const bg = getComputedStyle(el).backgroundColor; for (const c of Object.values(KC)) if (cm(bg, c, 35)) return true; return false; };
-
   const Q_SEL = ['[data-functional-selector="question-title"]','[data-functional-selector*="question"]','[class*="question-title"]','[class*="QuestionTitle"]','h1[class*="question"]','h2[class*="question"]','[class*="questionText"]','h1','h2'];
   const O_SEL = ['[data-functional-selector*="answer"]','[class*="answer-tile"]','[class*="AnswerTile"]','[class*="answerButton"]','[class*="answer__"]','[class*="choice"]'];
-
   const ex = el => { if (!el) return ''; let t = (el.innerText || el.textContent || '').trim(); t = t.replace(/^[A-Z][.)\-:]\s*/, '').replace(/^\d+[.)\-:]\s*/, '').trim(); return t; };
-
   const parse = () => {
     let qt = ''; const qe = firstOf(Q_SEL); if (qe) qt = ex(qe);
     let opts = allOf(O_SEL).map(el => { const t = ex(el); return t ? { text: t, el } : null; }).filter(Boolean);
@@ -453,10 +424,26 @@
   };
   const parseAll = () => { const c = parse(); return c.opts.length >= 2 ? [c] : []; };
 
-  // ─── AI WITH ROTATION ───
+  // ═══════════════════════════════════════════
+  // AI CALLERS
+  // ═══════════════════════════════════════════
   const isRateLimit = (err) => /429|rate limit|quota|exceeded/i.test(err.message || '');
 
   async function callProvider(prov, key, model, prompt, persona, chatMode = false) {
+    // XyloAPI — GET, no key, single prompt param
+    if (prov === 'xylo') {
+      const fullPrompt = (chatMode ? persona + ' ' : persona + ' ') + prompt;
+      const url = XYLO_BASE + '?prompt=' + encodeURIComponent(fullPrompt);
+      const r = await fetch(url, { method: 'GET' });
+      if (!r.ok) throw new Error('Xylo ' + r.status);
+      const d = await r.json();
+      if (!d.success) throw new Error('Xylo: ' + (d.error || 'fail'));
+      // Return wrapped for consistent parsing
+      const text = d.data?.response || '';
+      const reasoning = d.data?.reasoning || '';
+      return JSON.stringify({ answers: [{ i: 0, a: extractAnswerFromText(text, prompt), reason: (reasoning || text).slice(0, 200) }] });
+    }
+
     const sys = chatMode ? persona + ' Asisten chat cerdas. Jawab ringkas.' : persona;
     let url, headers = { 'Content-Type': 'application/json' }, body;
     if (prov === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers.Authorization = 'Bearer ' + key; body = { model, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }], temperature: 0.0, max_tokens: 1500 }; if (!chatMode) body.response_format = { type: 'json_object' }; }
@@ -464,31 +451,48 @@
     else if (prov === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers.Authorization = 'Bearer ' + key; body = { model, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }], temperature: 0.0, max_tokens: 1500 }; if (!chatMode) body.response_format = { type: 'json_object' }; }
     else { url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACC + '/ai/run/' + model; headers.Authorization = 'Bearer ' + key; body = { messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }] }; }
     const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(prov + ' ' + r.status + ': ' + txt.slice(0, 150));
-    }
+    if (!r.ok) { const txt = await r.text(); throw new Error(prov + ' ' + r.status + ': ' + txt.slice(0, 150)); }
     const d = await r.json();
     if (prov === 'cloudflare') { if (!d.success) throw new Error('CF fail'); let t = d?.result?.response; if (!t && d?.result?.choices?.[0]?.message?.content) t = d.result.choices[0].message.content; if (!t) throw new Error('CF empty'); return t; }
     return d.choices[0].message.content;
   }
 
-  // Multi-provider call with rotation
+  // Extract answer from free-text response (Xylo returns natural text)
+  function extractAnswerFromText(text, originalPrompt) {
+    if (!text) return '';
+    // Try JSON first
+    try {
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) { const j = JSON.parse(m[0]); if (j.a || j.answer) return j.a || j.answer; }
+    } catch {}
+    // Try to find quoted answer
+    const q = text.match(/[""]([^""]{2,80})[""]/);
+    if (q) return q[1];
+    // Try to find "answer is X"
+    const ans = text.match(/(?:answer|jawaban|opsi|pilihan)[\s:]*([^\n.]{1,80})/i);
+    if (ans) return ans[1].trim();
+    // Fallback: last non-empty line
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    return lines[lines.length - 1] || text.slice(0, 80);
+  }
+
   async function smartCall(prompt, persona, chatMode = false) {
     const primary = $('PR').value;
     const useFallback = $('PF').checked;
     const chain = useFallback ? [primary, ...FALLBACK_CHAIN.filter(p => p !== primary)] : [primary];
 
     for (const prov of chain) {
-      const key = prov === primary ? $('KY').value.trim() : KEYS[prov];
-      if (!key) { log('Skip ' + prov + ' (no key)', 'wn'); continue; }
+      const key = prov === primary ? $('KY').value.trim() : (KEYS[prov] || '');
+      if (prov !== 'xylo' && !key) { log('Skip ' + prov + ' (no key)', 'wn'); continue; }
 
       const models = MODELS[prov] || [];
       for (const model of models) {
         try {
           log('→ ' + prov + '/' + model, 'ai');
+          const t0 = Date.now();
           const r = await callProvider(prov, key, model, prompt, persona, chatMode);
           S.lastProvider = prov + '/' + model;
+          log('✓ ' + prov + '/' + model + ' (' + (Date.now() - t0) + 'ms)', 'ok');
           return { text: r, provider: prov, model };
         } catch (e) {
           const rateLimit = isRateLimit(e);
@@ -499,7 +503,7 @@
         }
       }
     }
-    throw new Error('Semua provider gagal. Cek API key / tunggu rate limit reset.');
+    throw new Error('Semua provider gagal.');
   }
 
   const parseRes = raw => {
@@ -531,7 +535,6 @@
     const cds = q.opts.filter(o => { const n = norm(o.text); return n.length > 0 && ns.length >= n.length * 0.5 && (n.includes(ns) || ns.includes(n)); });
     if (cds.length === 1) return { el: cds[0].el, r: 'contains' };
     if (cds.length > 1) return { el: cds[0].el, r: 'contains-best' };
-    // Word match — key improvement for "Units" vs "Direction" type
     for (const opt of q.opts) {
       const no = norm(opt.text);
       const words = no.split(' ').filter(w => w.length > 3);
@@ -561,30 +564,35 @@
     if (!qs_.length) { log('Nggak ada soal.', 'er'); return false; }
     const cur = qs_[0];
     if (!cur.opts.length) return false;
-
     S.running = true; setSt('running'); $('DOT').classList.add('run');
     const primary = $('PR').value;
     const persona = PERSONA[primary] || PERSONA.groq;
-
-    // Auto-minimize
     if ($('AM').checked) { root.classList.add('mini'); await sleep(100); }
 
     try {
-      const prompt = 'Baca dan jawab soal dengan TELITI. Pilih opsi paling tepat.\n\nSOAL: ' + cur.qText + '\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nPikirkan konsepnya. Jangan asal pilih. JSON: {"answers":[{"i":0,"a":"<teks opsi PERSIS>","reason":"<1 kalimat konsep>"}]}';
+      let prompt;
+      if (primary === 'xylo') {
+        // Xylo free-text — minta jawab + alasan
+        prompt = 'Soal: ' + cur.qText + '\n\nPilihan:\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nJawab dengan format: JAWABAN: <teks opsi persis>\nALASAN: <1 kalimat>';
+      } else {
+        prompt = 'Baca dan jawab soal dengan TELITI. Pilih opsi paling tepat.\n\nSOAL: ' + cur.qText + '\n' + cur.opts.map((o, i) => (i + 1) + '. ' + o.text).join('\n') + '\n\nJSON: {"answers":[{"i":0,"a":"<teks opsi PERSIS>","reason":"<1 kalimat>"}]}';
+      }
       const result = await smartCall(prompt, persona);
-      const answers = parseRes(result.text);
+      let answers = [];
+      try { answers = parseRes(result.text); } catch {
+        // Fallback: extract from free-text
+        const extracted = extractAnswerFromText(result.text, prompt);
+        answers = [{ idx: 0, answer: extracted, reason: result.text.slice(0, 150) }];
+      }
       const a = answers[0];
-      if (!a) throw new Error('No answer parsed');
+      if (!a) throw new Error('No answer');
 
       const m = findOpt(cur, a.answer);
-      log('→ Jawab: "' + a.answer + '" · match ' + m.r + ' via ' + result.provider, 'ai');
-
+      log('→ "' + a.answer.slice(0, 50) + '" · ' + m.r + ' via ' + result.provider, 'ai');
       if (m.el) {
         simulateClick(m.el);
         await sleep(120);
-        const ok = verifyClick(m.el);
-        if (!ok) {
-          log('→ Retry with ancestor', 'wn');
+        if (!verifyClick(m.el)) {
           const up = m.el.closest('[role="button"], button, div[tabindex]') || m.el.parentElement;
           if (up && up !== m.el) simulateClick(up);
         }
@@ -599,15 +607,13 @@
         return true;
       } else {
         log('✗ no-match: ' + a.answer.slice(0, 40), 'er');
-        setSt('error');
-        S.running = false; $('DOT').classList.remove('run');
+        setSt('error'); S.running = false; $('DOT').classList.remove('run');
         if ($('AM').checked) root.classList.remove('mini');
         return false;
       }
     } catch (e) {
       log('Err: ' + e.message, 'er');
-      setSt('error');
-      S.running = false; $('DOT').classList.remove('run');
+      setSt('error'); S.running = false; $('DOT').classList.remove('run');
       if ($('AM').checked) root.classList.remove('mini');
       return false;
     }
@@ -617,8 +623,7 @@
     if (S.observer) return;
     log('═══ AUTO ON ═══', 'ai');
     $('AUTO').innerHTML = I.loop + '<span>STOP AUTO</span>';
-    $('AUTO').classList.remove('grn');
-    $('AUTO').classList.add('dar');
+    $('AUTO').classList.remove('grn'); $('AUTO').classList.add('dar');
     let busy = false;
     const trySolve = async () => {
       if (busy || S.running) return;
@@ -628,11 +633,7 @@
         if (qs_.length) {
           const cur = qs_[0];
           const qKey = norm(cur.qText) + '|' + cur.opts.map(o => norm(o.text)).join('|');
-          if (qKey !== S.lastQ && cur.qText) {
-            S.lastQ = qKey;
-            log('→ Soal baru', 'ai');
-            await solveCurrent();
-          }
+          if (qKey !== S.lastQ && cur.qText) { S.lastQ = qKey; log('→ Soal baru', 'ai'); await solveCurrent(); }
         }
       } catch {}
       busy = false;
@@ -642,16 +643,10 @@
     S.observer._poll = setInterval(trySolve, 1500);
     trySolve();
   }
-
   function stopAuto() {
-    if (S.observer) {
-      try { S.observer.disconnect(); } catch {}
-      if (S.observer._poll) clearInterval(S.observer._poll);
-      S.observer = null;
-    }
+    if (S.observer) { try { S.observer.disconnect(); } catch {} if (S.observer._poll) clearInterval(S.observer._poll); S.observer = null; }
     $('AUTO').innerHTML = I.loop + '<span>MULAI AUTO</span>';
-    $('AUTO').classList.remove('dar');
-    $('AUTO').classList.add('grn');
+    $('AUTO').classList.remove('dar'); $('AUTO').classList.add('grn');
     log('═══ AUTO OFF ═══', 'wn');
   }
 
@@ -659,30 +654,27 @@
     qsa('.br-tab').forEach(b => b.onclick = () => {
       qsa('.br-tab').forEach(x => x.classList.remove('on'));
       qsa('.br-p').forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-      qs('.br-p[data-p="' + b.dataset.t + '"]').classList.add('on');
-      $('CT').scrollTop = 0;
+      b.classList.add('on'); qs('.br-p[data-p="' + b.dataset.t + '"]').classList.add('on'); $('CT').scrollTop = 0;
     });
     $('ST').onclick = () => { S.stealth = true; root.style.display = 'none'; pill.classList.add('on'); };
     $('CL').onclick = () => { stopAuto(); root.remove(); pill.remove(); window.__GKH_LOADED__ = false; };
-    $('MN').onclick = () => {
-      const mini = root.classList.toggle('mini');
-      $('MN').innerHTML = mini ? I.max : I.min;
-    };
+    $('MN').onclick = () => { const mini = root.classList.toggle('mini'); $('MN').innerHTML = mini ? I.max : I.min; };
     $('EY').onclick = () => { const i = $('KY'); i.type = i.type === 'password' ? 'text' : 'password'; };
 
     const updateModels = () => {
       const p = $('PR').value; const s = $('MD'); s.innerHTML = '';
       (MODELS[p] || []).forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; s.appendChild(o); });
-      if (KEYS[p]) { $('KY').value = KEYS[p]; $('KH').textContent = 'auto'; } else { $('KY').value = ''; $('KH').textContent = 'manual'; }
+      if (p === 'xylo') { $('KY').value = ''; $('KH').textContent = 'no-key-needed'; $('KEYROW').style.display = 'none'; }
+      else if (KEYS[p]) { $('KY').value = KEYS[p]; $('KH').textContent = 'auto'; $('KEYROW').style.display = 'block'; }
+      else { $('KY').value = ''; $('KH').textContent = 'manual'; $('KEYROW').style.display = 'block'; }
       $('TIP').innerHTML = I.spark + '<span>' + p + ' · ' + s.value + '</span>';
       if ($('PN')) $('PN').textContent = PERSONA[p] || '—';
       $('CM').textContent = p.toUpperCase() + ' · ' + s.value;
     };
     $('PR').onchange = updateModels;
     $('MD').onchange = () => { $('CM').textContent = $('PR').value.toUpperCase() + ' · ' + $('MD').value; };
-    $('SV').onclick = () => { localStorage.setItem('gkh6_cfg', JSON.stringify({ p: $('PR').value, m: $('MD').value, k: $('KY').value, a: $('AA').checked, am: $('AM').checked, pf: $('PF').checked })); log('Saved.', 'ok'); };
-    $('LD').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gkh6_cfg') || '{}'); if (c.p) { $('PR').value = c.p; updateModels(); } if (c.m) $('MD').value = c.m; if (c.k && !KEYS[$('PR').value]) $('KY').value = c.k; if (c.a !== undefined) $('AA').checked = c.a; if (c.am !== undefined) $('AM').checked = c.am; if (c.pf !== undefined) $('PF').checked = c.pf; log('Loaded.', 'ok'); } catch { log('Load gagal', 'er'); } };
+    $('SV').onclick = () => { localStorage.setItem('gkh7_cfg', JSON.stringify({ p: $('PR').value, m: $('MD').value, k: $('KY').value, a: $('AA').checked, am: $('AM').checked, pf: $('PF').checked, fm: $('FM').checked })); log('Saved.', 'ok'); };
+    $('LD').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gkh7_cfg') || '{}'); if (c.p) { $('PR').value = c.p; updateModels(); } if (c.m) $('MD').value = c.m; if (c.k && !KEYS[$('PR').value] && $('PR').value !== 'xylo') $('KY').value = c.k; if (c.a !== undefined) $('AA').checked = c.a; if (c.am !== undefined) $('AM').checked = c.am; if (c.pf !== undefined) $('PF').checked = c.pf; if (c.fm !== undefined) $('FM').checked = c.fm; log('Loaded.', 'ok'); } catch { log('Load gagal', 'er'); } };
     $('EXB').onclick = () => { const t = [...$('LG').children].map(c => c.textContent).join('\n'); const b = new Blob([t], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gkh-log.txt'; a.click(); };
     $('CLB').onclick = () => { $('LG').innerHTML = ''; };
 
@@ -717,7 +709,20 @@
     };
     $('AUTO').onclick = () => { if (S.observer) stopAuto(); else startAuto(); };
     $('GO').onclick = () => solveCurrent();
+    $('XYLO').onclick = async () => {
+      log('═══ Test XyloAPI ═══', 'ai');
+      try {
+        const t0 = Date.now();
+        const r = await fetch(XYLO_BASE + '?prompt=' + encodeURIComponent('Reply with exactly one word: OK'), { method: 'GET' });
+        const d = await r.json();
+        log('Status: ' + r.status + ' · ' + (Date.now() - t0) + 'ms', 'ok');
+        log('Success: ' + d.success, d.success ? 'ok' : 'er');
+        if (d.data?.response) log('Response: ' + d.data.response.slice(0, 100), 'ai');
+        if (d.data?.reasoning) log('Reasoning: ' + d.data.reasoning.slice(0, 100), 'in');
+      } catch (e) { log('Xylo err: ' + e.message, 'er'); }
+    };
 
+    // CHAT
     const MS = $('MS'), CI = $('CI'), CS = $('CS');
     const addMsg = (t, c) => { const d = document.createElement('div'); d.className = 'br-m ' + c; d.textContent = t; MS.appendChild(d); MS.scrollTop = MS.scrollHeight; return d; };
     const addTyp = () => { const d = document.createElement('div'); d.className = 'br-m a'; d.innerHTML = '<div class="br-dt"><span></span><span></span><span></span></div>'; MS.appendChild(d); MS.scrollTop = MS.scrollHeight; return d; };
