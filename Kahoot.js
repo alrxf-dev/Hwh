@@ -1,893 +1,632 @@
-/* GFS Kahoot Solver PRO v1 — by Alip/Alrect — Answer Tile + TF Reasoning */
+/* GFS Kahoot Solver COMPACT v2 — by Alip/Alrect */
 (function () {
-  if (window.__GKH_LOADED__) { document.getElementById('gkh-panel')?.remove(); document.getElementById('gkh-stealth-btn')?.remove(); window.__GKH_LOADED__ = false; return; }
+  if (window.__GKH_LOADED__) { document.getElementById('gkh-root')?.remove(); document.getElementById('gkh-pill')?.remove(); window.__GKH_LOADED__ = false; return; }
   window.__GKH_LOADED__ = true;
 
-  const CF_ACCOUNT_ID = '7f83137df22c15f252e1da2ee2214a6c';
-  const CF_API_TOKEN = 'cfut_2WkAuydB6WzZXAzdSIGz3kI5AxyEQVDOqllfGshz3568c7ff';
-
-  const HARDCODED_KEYS = {
+  // ─── CONFIG ───
+  const CF_ACC = '7f83137df22c15f252e1da2ee2214a6c';
+  const CF_TOK = 'cfut_2WkAuydB6WzZXAzdSIGz3kI5AxyEQVDOqllfGshz3568c7ff';
+  const KEYS = {
     groq: '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',
     openrouter: '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',
-    cloudflare: CF_API_TOKEN
+    cloudflare: CF_TOK
   };
-
-  const PERSONALITY = {
-    groq: '[Persona: Academic Quiz Solver expert. Lo ahli bahasa, sains, sejarah, geografi, matematika, musik, dan pengetahuan umum. Sangat TELITI. Untuk soal TRUE/FALSE, nilai berdasarkan FAKTA ILMIAH, bukan asumsi umum. Contoh: "Mata burung unta lebih besar dari otaknya" = TRUE (fakta biologi). "Lalat melompat mundur saat terbang" = TRUE. Jangan asal.]',
-    openrouter: '[Persona: Academic Quiz Solver. Fokus akurasi. Untuk TF, nilai berdasarkan fakta. Teliti tiap opsi.]',
-    cloudflare: '[Persona: Quiz Solver. Nilai fakta dengan teliti. Balas JSON only.]',
-    openai: '[Persona: Academic Quiz Solver. Prioritaskan akurasi. Verifikasi setiap opsi terhadap fakta ilmiah.]'
+  const PERSONA = {
+    groq: '[MCQ+TF solver ahli. Sangat teliti. Untuk TRUE/FALSE, nilai berbasis fakta ilmiah bukan asumsi. Contoh: "Mata burung unta lebih besar dari otaknya" = TRUE. Jangan asal.]',
+    openrouter: '[MCQ+TF solver. Fokus akurasi, teliti pronoun + fakta.]',
+    cloudflare: '[MCQ+TF solver. Nilai fakta dengan teliti.]',
+    openai: '[Academic solver. Prioritaskan akurasi.]'
   };
-
-  const state = { running: false, stealth: false, chatHistory: [], autoInterval: null };
-  const BATCH_SIZE = { groq: 2, openrouter: 2, openai: 2, cloudflare: 2 };
-
   const MODELS = {
     groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
     openrouter: ['nvidia/nemotron-3-ultra-550b-a55b:free', 'nvidia/nemotron-3-super-120b-a12b:free'],
-    cloudflare: [
-      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-      '@cf/meta/llama-3.1-8b-instruct',
-      '@cf/mistral/mistral-7b-instruct-v0.1',
-      '@cf/meta/llama-3.2-3b-instruct'
-    ],
+    cloudflare: ['@cf/meta/llama-3.3-70b-instruct-fp8-fast', '@cf/meta/llama-3.1-8b-instruct', '@cf/mistral/mistral-7b-instruct-v0.1'],
     openai: ['gpt-4o-mini', 'gpt-4o']
   };
+  const BATCH = { groq: 2, openrouter: 2, openai: 2, cloudflare: 2 };
 
-  const SVG = {
-    bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
-    play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" fill="currentColor"/></svg>',
-    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
-    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4z"/><path d="M4 20h14"/></svg>',
-    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>',
-    settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-    code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>',
+  const S = { running: false, stealth: false, chat: [], loop: null, tab: 'solve' };
+
+  // ─── SVG ───
+  const I = {
+    bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+    scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>',
+    loop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    min: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
+    max: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
     ghost: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/></svg>',
-    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
-    minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
-    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
-    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
-    heart: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
-    star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-    sparkle: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5.8 1.9L12 17.4l-2.2-5.8L4 9.7l6.1-1.9L12 2z"/></svg>',
-    rocket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
-    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
-    whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>',
-    id: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h4M15 12h4M9 14c-1.5 0-3 .5-3 2h6c0-1.5-1.5-2-3-2z"/></svg>',
     chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
-    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4z"/><path d="M4 20h14"/></svg>',
+    cog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>',
+    wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>',
+    spark: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5.8 1.9L12 17.4l-2.2-5.8L4 9.7l6.1-1.9L12 2z"/></svg>'
   };
 
-  const CSS = `
-  @keyframes gkhIn{0%{opacity:0;transform:translate(-50%,-50%) perspective(1000px) rotateX(-15deg) scale(.85)}100%{opacity:1;transform:translate(-50%,-50%) perspective(1000px) rotateX(0) scale(1)}}
-  @keyframes gkhTabIn{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
-  @keyframes gkhPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.5}}
-  @keyframes gkhSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-  @keyframes gkhFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-  @keyframes gkhShine{0%{background-position:-200% 0}100%{background-position:200% 0}}
-  @keyframes gkhGlow{0%,100%{box-shadow:0 0 12px rgba(139,92,246,.5)}50%{box-shadow:0 0 20px rgba(139,92,246,.8)}}
-  @keyframes gkhDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+  // ─── STYLES ───
+  const css = `
+  @keyframes gi{from{opacity:0;transform:translate(-50%,-48%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+  @keyframes gp{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes gs{to{transform:rotate(360deg)}}
+  @keyframes gf{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  @keyframes gd{0%,80%,100%{opacity:.3}40%{opacity:1}}
+  @keyframes gn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-  #gkh-panel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:460px;max-width:94vw;background:linear-gradient(160deg,#0a0f1c 0%,#0f172a 50%,#0b1220 100%);color:#e2e8f0;border:1px solid rgba(139,92,246,.25);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.9);z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:13px;display:flex;flex-direction:column;max-height:92vh;overflow:hidden;animation:gkhIn .5s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(20px)}
-  #gkh-panel *{box-sizing:border-box}
-  #gkh-panel::-webkit-scrollbar{width:6px}
-  #gkh-panel::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
+  #gkh-root{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;max-width:94vw;background:#0b0f1a;color:#dce3f0;border:1px solid rgba(120,80,220,.35);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.85),0 0 0 1px rgba(120,80,220,.12);z-index:2147483647;font:12px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;display:flex;flex-direction:column;max-height:88vh;overflow:hidden;animation:gi .28s cubic-bezier(.34,1.56,.64,1)}
+  #gkh-root *{box-sizing:border-box;margin:0;padding:0}
+  #gkh-root::-webkit-scrollbar{width:5px}
+  #gkh-root::-webkit-scrollbar-thumb{background:#6b46c1;border-radius:3px}
 
-  .gkh-hdr{padding:16px 18px;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 45%,#a855f7 100%);cursor:move;display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
-  .gkh-hdr::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);background-size:200% 100%;animation:gkhShine 3s infinite;pointer-events:none}
-  .gkh-hdr-title{display:flex;align-items:center;gap:10px;pointer-events:none;position:relative;z-index:1}
-  .gkh-logo{width:30px;height:30px;background:rgba(255,255,255,.22);border-radius:10px;display:flex;align-items:center;justify-content:center;animation:gkhFloat 3s ease-in-out infinite}
-  .gkh-logo svg{width:16px;height:16px;color:#fff}
-  .gkh-status{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:gkhPulse 2s infinite}
-  .gkh-status.busy{background:#facc15;animation:gkhSpin 1s linear infinite}
-  .gkh-hdr-btns{display:flex;gap:6px;position:relative;z-index:1}
-  .gkh-hdr button{background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-  .gkh-hdr button svg{width:14px;height:14px}
-  .gkh-hdr button:hover{background:rgba(255,255,255,.32);transform:scale(1.1)}
+  .h{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:linear-gradient(90deg,#6b46c1,#8b5cf6 50%,#a855f7);flex-shrink:0}
+  .h-l{display:flex;align-items:center;gap:7px;color:#fff;font-weight:800;font-size:12.5px;letter-spacing:.2px}
+  .h-logo{width:22px;height:22px;background:rgba(255,255,255,.2);border-radius:6px;display:flex;align-items:center;justify-content:center;animation:gf 3s ease-in-out infinite}
+  .h-logo svg{width:12px;height:12px;color:#fff}
+  .h-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80;animation:gp 2s infinite}
+  .h-dot.b{background:#facc15;box-shadow:0 0 8px #facc15;animation:gs 1s linear infinite}
+  .h-r{display:flex;gap:4px}
+  .h-b{background:rgba(255,255,255,.16);border:none;color:#fff;width:22px;height:22px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s}
+  .h-b svg{width:11px;height:11px}
+  .h-b:hover{background:rgba(255,255,255,.3);transform:scale(1.08)}
 
-  .gkh-tabs{display:flex;background:rgba(11,18,32,.6);border-bottom:1px solid rgba(139,92,246,.15);padding:6px 8px 0;flex-shrink:0;gap:2px;overflow-x:auto}
-  .gkh-tabs::-webkit-scrollbar{display:none}
-  .gkh-tab{flex:1;min-width:58px;padding:11px 6px;background:none;border:none;color:#64748b;font-size:9.5px;font-weight:800;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.6px;transition:all .3s;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;gap:4px;position:relative}
-  .gkh-tab svg{width:13px;height:13px;opacity:.7}
-  .gkh-tab::after{content:'';position:absolute;left:50%;bottom:0;transform:translateX(-50%) scaleX(0);width:70%;height:2px;background:linear-gradient(90deg,transparent,#818cf8,transparent);transition:transform .3s;border-radius:2px}
-  .gkh-tab.active{color:#c7d2fe;background:linear-gradient(180deg,rgba(99,102,241,.15),rgba(99,102,241,.02))}
-  .gkh-tab.active svg{opacity:1;color:#a5b4fc}
-  .gkh-tab.active::after{transform:translateX(-50%) scaleX(1)}
+  .t{display:flex;background:#0e1322;border-bottom:1px solid rgba(120,80,220,.18);flex-shrink:0;padding:2px 4px 0;gap:1px}
+  .t-b{flex:1;padding:8px 4px 6px;background:none;border:none;color:#5a6784;cursor:pointer;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;transition:all .2s;border-radius:7px 7px 0 0;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+  .t-b svg{width:14px;height:14px;opacity:.75}
+  .t-b:hover{color:#94a3b8;background:rgba(148,163,184,.05)}
+  .t-b.on{color:#c4b5fd;background:linear-gradient(180deg,rgba(139,92,246,.18),transparent)}
+  .t-b.on svg{opacity:1;color:#a78bfa;filter:drop-shadow(0 0 4px rgba(167,139,250,.7))}
+  .t-b.on::after{content:'';position:absolute;left:15%;right:15%;bottom:0;height:2px;background:linear-gradient(90deg,transparent,#8b5cf6,transparent);border-radius:2px}
 
-  .gkh-body{padding:18px;overflow-y:auto;flex:1;min-height:0}
-  .gkh-tab-panel{display:none}
-  .gkh-tab-panel.active{display:block;animation:gkhTabIn .35s}
-  .gkh-row{margin-bottom:13px}
-  .gkh-lbl{display:flex;align-items:center;gap:5px;font-size:10px;color:#94a3b8;margin-bottom:7px;text-transform:uppercase;font-weight:800;letter-spacing:.7px}
-  .gkh-lbl svg{width:12px;height:12px;color:#818cf8}
-  .gkh-hint{font-size:9.5px;color:#475569;text-transform:none;margin-left:auto;font-weight:500}
-  .gkh-input,.gkh-select{width:100%;padding:11px 13px;background:rgba(11,18,32,.7);border:1px solid rgba(51,65,85,.8);border-radius:11px;color:#e2e8f0;font-size:12.5px;font-family:inherit;outline:none;transition:all .25s}
-  .gkh-input:focus,.gkh-select:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
-  .gkh-input-wrap{position:relative}
-  .gkh-input-wrap .gkh-input{padding-right:44px}
-  .gkh-eye{position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:7px 10px;border-radius:7px}
-  .gkh-eye svg{width:14px;height:14px}
-  .gkh-eye:hover{color:#a5b4fc;background:rgba(99,102,241,.15)}
+  .bd{flex:1;overflow-y:auto;padding:12px;min-height:0}
+  .bd::-webkit-scrollbar{width:4px}
+  .bd::-webkit-scrollbar-thumb{background:#6b46c1;border-radius:2px}
 
-  .gkh-btn{width:100%;padding:13px;border:none;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .3s}
-  .gkh-btn svg{width:16px;height:16px}
-  .gkh-btn-main{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 50%,#a855f7 100%);color:#fff;box-shadow:0 8px 24px rgba(99,102,241,.45)}
-  .gkh-btn-main:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 32px rgba(99,102,241,.55)}
-  .gkh-btn-main:disabled{opacity:.5;cursor:not-allowed}
-  .gkh-btn-sec{background:rgba(30,41,59,.8);color:#cbd5e1;border:1px solid rgba(51,65,85,.9)}
-  .gkh-btn-sec:hover{background:rgba(51,65,85,.9);color:#e2e8f0}
-  .gkh-btn-danger{background:rgba(69,10,10,.7);color:#fca5a5;border:1px solid rgba(127,29,29,.7)}
-  .gkh-btn-danger:hover{background:rgba(127,29,29,.9)}
-  .gkh-btn-stealth{background:linear-gradient(135deg,rgba(15,23,42,.9),rgba(30,41,59,.9));color:#94a3b8;border:1px solid rgba(51,65,85,.8)}
-  .gkh-btn-stealth:hover{color:#e2e8f0;border-color:rgba(139,92,246,.5)}
-  .gkh-btn-sm{padding:9px 12px;font-size:11.5px;border-radius:9px}
-  .gkh-btn-sm svg{width:14px;height:14px}
-  .gkh-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-  .gkh-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .p{display:none}
+  .p.on{display:block;animation:gn .22s ease-out}
 
-  .gkh-progress{height:6px;background:rgba(30,41,59,.7);border-radius:4px;overflow:hidden;margin-top:12px;display:none}
-  .gkh-progress.active{display:block}
-  .gkh-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7,#8b5cf6,#6366f1);background-size:200% 100%;transition:width .4s;width:0%;border-radius:4px;animation:gkhShine 2s linear infinite}
+  .tip{padding:8px 10px;background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(99,102,241,.05));border-left:2px solid #8b5cf6;border-radius:0 7px 7px 0;font-size:9.5px;color:#a5b4fc;margin-bottom:9px;display:flex;align-items:center;gap:6px;line-height:1.4}
+  .tip svg{width:12px;height:12px;color:#8b5cf6;flex-shrink:0}
 
-  .gkh-score{margin-top:16px;padding:18px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:14px;border-left:4px solid #6366f1;display:none}
-  .gkh-score.active{display:block}
-  .gkh-score-h{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:800;display:flex;align-items:center;gap:6px}
-  .gkh-score-h svg{width:13px;height:13px;color:#fbbf24}
-  .gkh-score-v{font-size:38px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1.5px}
-  .gkh-score-d{font-size:11px;color:#94a3b8;margin-top:8px}
+  .pn{font-size:9px;color:#8b5cf6;margin-bottom:9px;padding:7px 9px;background:rgba(139,92,246,.08);border-radius:6px;font-style:italic;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 
-  .gkh-log{background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:14px;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:10.5px;height:290px;overflow-y:auto;color:#94a3b8;line-height:1.7}
-  .gkh-log div{margin-bottom:2px;word-break:break-word}
-  .gkh-log .ok{color:#4ade80}
-  .gkh-log .err{color:#f87171}
-  .gkh-log .info{color:#60a5fa}
-  .gkh-log .warn{color:#fbbf24}
-  .gkh-log .ai{color:#c4b5fd;font-weight:700}
-  .gkh-log::-webkit-scrollbar{width:5px}
-  .gkh-log::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
+  .btn{width:100%;padding:10px;border:none;border-radius:8px;font:800 12px inherit;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;letter-spacing:.2px}
+  .btn svg{width:14px;height:14px}
+  .btn-p{background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);color:#fff;box-shadow:0 6px 18px rgba(99,102,241,.4)}
+  .btn-p:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 10px 24px rgba(99,102,241,.55)}
+  .btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .btn-s{background:rgba(30,41,59,.7);color:#cbd5e1;border:1px solid rgba(51,65,85,.8)}
+  .btn-s:hover{background:rgba(51,65,85,.85);color:#e2e8f0}
+  .btn-d{background:rgba(69,10,10,.65);color:#fca5a5;border:1px solid rgba(127,29,29,.65)}
+  .btn-d:hover{background:rgba(127,29,29,.85)}
+  .btn-g{background:rgba(30,41,59,.6);color:#94a3b8;border:1px solid rgba(51,65,85,.7)}
+  .btn-g:hover{color:#e2e8f0;border-color:rgba(139,92,246,.45)}
+  .btn-sm{padding:7px;font-size:10px;border-radius:6px}
+  .btn-sm svg{width:12px;height:12px}
 
-  .gkh-footer{padding:11px 18px;background:rgba(10,15,28,.85);border-top:1px solid rgba(30,41,59,.8);font-size:10.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-  .gkh-badge{padding:4px 10px;background:linear-gradient(135deg,rgba(30,41,59,.9),rgba(51,65,85,.9));border-radius:7px;font-family:monospace;font-size:10px;color:#a5b4fc;font-weight:700;text-transform:uppercase}
-  .gkh-badge.busy{background:linear-gradient(135deg,#78350f,#92400e);color:#fbbf24;animation:gkhPulse 1.5s infinite}
-  .gkh-badge.error{background:linear-gradient(135deg,#450a0a,#7f1d1d);color:#fca5a5}
-  .gkh-badge.done{background:linear-gradient(135deg,#14532d,#15803d);color:#86efac}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+  .mb{margin-bottom:8px}
+  .mt{margin-top:8px}
 
-  .gkh-tip{font-size:10.5px;color:#94a3b8;margin-bottom:12px;padding:11px 13px;background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.05));border-left:3px solid #6366f1;border-radius:0 10px 10px 0;line-height:1.55;display:flex;align-items:center;gap:8px}
-  .gkh-tip svg{width:14px;height:14px;color:#818cf8;flex-shrink:0}
+  .bar{height:4px;background:rgba(30,41,59,.7);border-radius:3px;overflow:hidden;margin-top:8px;display:none}
+  .bar.on{display:block}
+  .bar-f{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#a855f7);transition:width .35s;width:0;border-radius:3px}
 
-  .gkh-expl-list{max-height:340px;overflow-y:auto;background:rgba(2,6,23,.9);border:1px solid rgba(30,41,59,.9);border-radius:12px;padding:12px}
-  .gkh-expl-item{padding:12px;margin-bottom:10px;background:linear-gradient(135deg,rgba(30,41,59,.6),rgba(51,65,85,.4));border-radius:11px;border-left:3px solid #6366f1}
-  .gkh-expl-num{font-size:10px;color:#64748b;font-weight:800;margin-bottom:5px;text-transform:uppercase;display:flex;align-items:center;gap:5px}
-  .gkh-expl-ans{font-size:12px;color:#86efac;font-weight:700;margin-bottom:5px}
-  .gkh-expl-reason{font-size:10.5px;color:#94a3b8;line-height:1.6}
-  .gkh-expl-conf{font-size:9.5px;color:#64748b;margin-top:5px;font-family:monospace}
+  .sc{margin-top:10px;padding:11px;background:linear-gradient(135deg,rgba(30,41,59,.85),rgba(51,65,85,.7));border-radius:9px;border-left:3px solid #6366f1;display:none}
+  .sc.on{display:block}
+  .sc-t{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.7px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:4px}
+  .sc-t svg{width:11px;height:11px;color:#fbbf24}
+  .sc-v{font-size:26px;font-weight:900;line-height:1;background:linear-gradient(135deg,#22c55e,#4ade80,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px}
+  .sc-d{font-size:9.5px;color:#94a3b8;margin-top:5px;line-height:1.4}
 
-  .gkh-toggle{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
-  .gkh-toggle input{opacity:0;width:0;height:0}
-  .gkh-slider{position:absolute;cursor:pointer;inset:0;background:#334155;transition:.3s;border-radius:22px}
-  .gkh-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;transition:.3s;border-radius:50%}
-  input:checked + .gkh-slider{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
-  input:checked + .gkh-slider:before{transform:translateX(18px)}
+  .lbl{display:flex;align-items:center;gap:4px;font-size:9px;color:#94a3b8;margin-bottom:5px;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+  .lbl svg{width:11px;height:11px;color:#818cf8}
+  .lbl span{margin-left:auto;color:#475569;font-weight:500;text-transform:none;letter-spacing:0;font-size:8.5px}
 
-  #gkh-stealth-btn{position:fixed;right:20px;bottom:20px;width:56px;height:56px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 12px 32px rgba(99,102,241,.55);z-index:2147483646;animation:gkhGlow 2s infinite}
-  #gkh-stealth-btn svg{width:24px;height:24px}
-  #gkh-stealth-btn.active{display:flex}
-  #gkh-stealth-btn:hover{transform:scale(1.15)}
+  .inp,.sel{width:100%;padding:8px 10px;background:rgba(11,18,32,.7);border:1px solid rgba(51,65,85,.75);border-radius:7px;color:#e2e8f0;font:11.5px inherit;font-family:inherit;outline:none;transition:all .2s}
+  .inp:focus,.sel:focus{border-color:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.2)}
+  .iw{position:relative}
+  .iw .inp{padding-right:34px}
+  .iey{position:absolute;right:2px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:6px 8px;border-radius:5px}
+  .iey svg{width:12px;height:12px}
+  .iey:hover{color:#a5b4fc;background:rgba(99,102,241,.15)}
 
-  .gkh-switch-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:rgba(11,18,32,.7);border:1px solid rgba(51,65,85,.6);border-radius:11px;margin-bottom:9px}
-  .gkh-switch-lbl{font-size:11.5px;color:#cbd5e1;font-weight:700}
-  .gkh-switch-desc{font-size:9.5px;color:#64748b;margin-top:2px}
-  .gkh-persona{font-size:10px;color:#a5b4fc;margin-bottom:10px;padding:10px 12px;background:linear-gradient(135deg,rgba(139,92,246,.15),rgba(99,102,241,.08));border-left:2px solid #8b5cf6;border-radius:0 10px 10px 0;line-height:1.55;font-style:italic}
+  .sw{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;background:rgba(11,18,32,.6);border:1px solid rgba(51,65,85,.5);border-radius:7px;margin-bottom:5px}
+  .sw-t{font-size:10.5px;color:#cbd5e1;font-weight:700}
+  .sw-d{font-size:8.5px;color:#64748b;margin-top:1px}
+  .tg{position:relative;width:32px;height:18px;flex-shrink:0}
+  .tg input{opacity:0;width:0;height:0}
+  .ts{position:absolute;cursor:pointer;inset:0;background:#334155;border-radius:18px;transition:.25s}
+  .ts::before{content:"";position:absolute;height:12px;width:12px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s}
+  input:checked + .ts{background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+  input:checked + .ts::before{transform:translateX(14px)}
 
-  .gkh-chat-wrap{display:flex;flex-direction:column;height:420px;background:rgba(2,6,23,.6);border:1px solid rgba(30,41,59,.9);border-radius:14px;overflow:hidden}
-  .gkh-chat-hdr{padding:10px 14px;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border-bottom:1px solid rgba(139,92,246,.2);font-size:11px;color:#a5b4fc;font-weight:700;display:flex;align-items:center;justify-content:space-between}
-  .gkh-chat-hdr svg{width:14px;height:14px}
-  .gkh-chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
-  .gkh-chat-msgs::-webkit-scrollbar{width:5px}
-  .gkh-chat-msgs::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6366f1,#8b5cf6);border-radius:3px}
-  .gkh-msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:12px;line-height:1.55;word-wrap:break-word;white-space:pre-wrap;animation:gkhTabIn .3s}
-  .gkh-msg.user{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:4px}
-  .gkh-msg.ai{align-self:flex-start;background:linear-gradient(135deg,rgba(30,41,59,.95),rgba(51,65,85,.85));color:#e2e8f0;border-bottom-left-radius:4px;border:1px solid rgba(139,92,246,.2)}
-  .gkh-msg.err{align-self:flex-start;background:rgba(69,10,10,.9);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
-  .gkh-msg.sys{align-self:center;background:rgba(99,102,241,.15);color:#c7d2fe;border:1px dashed rgba(99,102,241,.4);font-size:11px;text-align:center;max-width:95%}
-  .gkh-msg-dot{display:inline-flex;gap:3px;padding:4px 0}
-  .gkh-msg-dot span{width:6px;height:6px;border-radius:50%;background:#a5b4fc;animation:gkhDot 1.2s infinite}
-  .gkh-msg-dot span:nth-child(2){animation-delay:.2s}
-  .gkh-msg-dot span:nth-child(3){animation-delay:.4s}
-  .gkh-chat-input{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(30,41,59,.9);background:rgba(11,18,32,.8)}
-  .gkh-chat-input textarea{flex:1;padding:10px 12px;background:rgba(2,6,23,.7);border:1px solid rgba(51,65,85,.8);border-radius:10px;color:#e2e8f0;font-size:12px;font-family:inherit;resize:none;outline:none;max-height:100px;min-height:42px;line-height:1.4}
-  .gkh-chat-input textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
-  .gkh-chat-send{width:44px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:10px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .gkh-chat-send svg{width:16px;height:16px}
-  .gkh-chat-send:hover:not(:disabled){transform:scale(1.08)}
-  .gkh-chat-send:disabled{opacity:.5;cursor:not-allowed}
-  .gkh-chat-chip{display:flex;flex-wrap:wrap;gap:6px;padding:0 10px 10px}
-  .gkh-chip{padding:5px 10px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:12px;color:#c7d2fe;font-size:10px;cursor:pointer}
-  .gkh-chip:hover{background:rgba(99,102,241,.3)}
+  .log{background:#020617;border:1px solid rgba(30,41,59,.85);border-radius:8px;padding:9px;font:9.5px/1.6 'SF Mono',Menlo,Consolas,monospace;height:240px;overflow-y:auto;color:#94a3b8}
+  .log div{margin-bottom:1px;word-break:break-word;animation:gn .18s ease-out}
+  .log .ok{color:#4ade80}
+  .log .er{color:#f87171}
+  .log .in{color:#60a5fa}
+  .log .wn{color:#fbbf24}
+  .log .ai{color:#c4b5fd;font-weight:700}
+  .log::-webkit-scrollbar{width:4px}
+  .log::-webkit-scrollbar-thumb{background:#6b46c1;border-radius:2px}
+
+  .cw{display:flex;flex-direction:column;height:340px;background:rgba(2,6,23,.55);border:1px solid rgba(30,41,59,.85);border-radius:10px;overflow:hidden}
+  .cw-h{padding:7px 10px;background:linear-gradient(90deg,rgba(139,92,246,.15),transparent);border-bottom:1px solid rgba(139,92,246,.18);font-size:9.5px;color:#a5b4fc;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+  .cw-h svg{width:12px;height:12px}
+  .cw-m{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px}
+  .cw-m::-webkit-scrollbar{width:4px}
+  .cw-m::-webkit-scrollbar-thumb{background:#6b46c1;border-radius:2px}
+  .m{max-width:88%;padding:7px 10px;border-radius:10px;font-size:11px;line-height:1.5;word-wrap:break-word;white-space:pre-wrap;animation:gn .2s}
+  .m.u{align-self:flex-end;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-bottom-right-radius:3px}
+  .m.a{align-self:flex-start;background:rgba(30,41,59,.9);color:#e2e8f0;border-bottom-left-radius:3px;border:1px solid rgba(139,92,246,.18)}
+  .m.e{align-self:flex-start;background:rgba(69,10,10,.85);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+  .m.s{align-self:center;background:rgba(99,102,241,.12);color:#c7d2fe;border:1px dashed rgba(99,102,241,.35);font-size:10px;text-align:center;max-width:95%}
+  .dt{display:inline-flex;gap:2px;padding:3px 0}
+  .dt span{width:5px;height:5px;border-radius:50%;background:#a5b4fc;animation:gd 1.2s infinite}
+  .dt span:nth-child(2){animation-delay:.15s}
+  .dt span:nth-child(3){animation-delay:.3s}
+  .cw-i{display:flex;gap:6px;padding:7px;border-top:1px solid rgba(30,41,59,.85);background:rgba(11,18,32,.75)}
+  .cw-i textarea{flex:1;padding:7px 9px;background:rgba(2,6,23,.7);border:1px solid rgba(51,65,85,.75);border-radius:7px;color:#e2e8f0;font:11px inherit;font-family:inherit;resize:none;outline:none;max-height:80px;min-height:34px;line-height:1.4}
+  .cw-i textarea:focus{border-color:#8b5cf6;box-shadow:0 0 0 2px rgba(139,92,246,.18)}
+  .cw-s{width:36px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:7px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .cw-s svg{width:13px;height:13px}
+  .cw-s:hover:not(:disabled){transform:scale(1.06)}
+  .cw-s:disabled{opacity:.5;cursor:not-allowed}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;padding:0 7px 7px}
+  .ch{padding:3px 8px;background:rgba(99,102,241,.14);border:1px solid rgba(99,102,241,.28);border-radius:10px;color:#c7d2fe;font-size:9px;cursor:pointer}
+  .ch:hover{background:rgba(99,102,241,.28)}
+
+  .exl{max-height:290px;overflow-y:auto;background:rgba(2,6,23,.85);border:1px solid rgba(30,41,59,.85);border-radius:8px;padding:8px}
+  .exl::-webkit-scrollbar{width:4px}
+  .exl::-webkit-scrollbar-thumb{background:#6b46c1;border-radius:2px}
+  .ex{padding:8px 9px;margin-bottom:6px;background:rgba(30,41,59,.5);border-radius:7px;border-left:2px solid #6366f1}
+  .ex-t{font-size:8.5px;color:#64748b;font-weight:800;margin-bottom:3px;text-transform:uppercase;display:flex;align-items:center;gap:4px}
+  .ex-t svg{width:10px;height:10px}
+  .ex-a{font-size:11px;color:#86efac;font-weight:700;margin-bottom:3px}
+  .ex-r{font-size:9.5px;color:#94a3b8;line-height:1.45}
+  .ex-c{font-size:8.5px;color:#64748b;margin-top:3px;font-family:monospace}
+
+  .ft{padding:6px 11px;background:rgba(10,15,28,.9);border-top:1px solid rgba(30,41,59,.75);font-size:9px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+  .bg{padding:2px 7px;background:rgba(30,41,59,.85);border-radius:5px;font:700 8.5px monospace;color:#a5b4fc;text-transform:uppercase;letter-spacing:.3px}
+  .bg.b{background:#78350f;color:#fbbf24;animation:gp 1.4s infinite}
+  .bg.e{background:#7f1d1d;color:#fca5a5}
+  .bg.d{background:#14532d;color:#86efac}
+
+  #gkh-pill{position:fixed;right:16px;bottom:16px;width:46px;height:46px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:none;align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 8px 24px rgba(99,102,241,.55);z-index:2147483646;transition:transform .2s}
+  #gkh-pill svg{width:20px;height:20px}
+  #gkh-pill.on{display:flex}
+  #gkh-pill:hover{transform:scale(1.12)}
+
+  .cr{background:linear-gradient(160deg,rgba(99,102,241,.14),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.3);border-radius:12px;padding:16px;text-align:center}
+  .cr-a{width:62px;height:62px;margin:0 auto 10px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(139,92,246,.45)}
+  .cr-a svg{width:28px;height:28px;color:#fff}
+  .cr-n{font-size:18px;font-weight:900;background:linear-gradient(135deg,#a5b4fc,#c4b5fd,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.3px}
+  .cr-r{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin:3px 0 12px}
+  .cr-w{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid rgba(74,222,128,.4);border-radius:9px;color:#fff;font-weight:800;text-decoration:none;transition:all .2s}
+  .cr-w:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(74,222,128,.4)}
+  .cr-w svg{width:18px;height:18px}
+  .cr-w-t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.25}
+  .cr-w-l{font-size:7.5px;opacity:.85;letter-spacing:.8px}
+  .cr-w-n{font-size:12px;font-weight:900}
+  .cr-f{margin-top:10px;font-size:8.5px;color:#475569}
   `;
 
-  const styleEl = document.createElement('style');
-  styleEl.textContent = CSS;
-  document.head.appendChild(styleEl);
+  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
-  const stealthBtn = document.createElement('div');
-  stealthBtn.id = 'gkh-stealth-btn';
-  stealthBtn.innerHTML = SVG.bolt;
-  stealthBtn.onclick = () => { state.stealth = false; panel.style.display = 'flex'; stealthBtn.classList.remove('active'); };
-  document.body.appendChild(stealthBtn);
+  // ─── PILL ───
+  const pill = document.createElement('div');
+  pill.id = 'gkh-pill'; pill.innerHTML = I.bolt;
+  pill.onclick = () => { S.stealth = false; root.style.display = 'flex'; pill.classList.remove('on'); };
+  document.body.appendChild(pill);
 
-  const panel = document.createElement('div');
-  panel.id = 'gkh-panel';
-  panel.innerHTML = `
-    <div class="gkh-hdr" id="gkh-hdr">
-      <div class="gkh-hdr-title">
-        <div class="gkh-logo">${SVG.bolt}</div>
-        <span>GFS Kahoot Solver</span>
-        <span class="gkh-status" id="gkh-status"></span>
+  // ─── ROOT ───
+  const root = document.createElement('div');
+  root.id = 'gkh-root';
+  root.innerHTML = `
+  <div class="h" id="H">
+    <div class="h-l"><div class="h-logo">${I.bolt}</div><span>Kahoot Solver</span><span class="h-dot" id="DOT"></span></div>
+    <div class="h-r">
+      <button class="h-b" id="MN" title="Min">${I.min}</button>
+      <button class="h-b" id="ST" title="Stealth">${I.ghost}</button>
+      <button class="h-b" id="CL" title="Close">${I.x}</button>
+    </div>
+  </div>
+  <div class="t" id="T">
+    <button class="t-b on" data-t="solve">${I.play}<span>Solve</span></button>
+    <button class="t-b" data-t="chat">${I.chat}<span>Chat</span></button>
+    <button class="t-b" data-t="explain">${I.book}<span>Info</span></button>
+    <button class="t-b" data-t="settings">${I.cog}<span>Config</span></button>
+    <button class="t-b" data-t="log">${I.code}<span>Log</span></button>
+    <button class="t-b" data-t="credit">${I.heart}<span>Cred</span></button>
+  </div>
+  <div class="bd" id="BD">
+
+    <div class="p on" data-p="solve">
+      <div class="tip" id="TIP">${I.spark}<span>Groq · gpt-oss-120b</span></div>
+      <div class="pn" id="PN">—</div>
+      <button class="btn btn-p mb" id="GO">${I.play}<span>JAWAB SEKARANG</span></button>
+      <div class="bar" id="BAR"><div class="bar-f" id="BARF"></div></div>
+      <div class="g3 mt">
+        <button class="btn btn-s btn-sm" id="SC">${I.scan}<span>SCAN</span></button>
+        <button class="btn btn-g btn-sm" id="LP">${I.loop}<span>AUTO</span></button>
+        <button class="btn btn-d btn-sm" id="RS">${I.trash}<span>RS</span></button>
       </div>
-      <div class="gkh-hdr-btns">
-        <button id="gkh-min" title="Minimize">${SVG.minus}</button>
-        <button id="gkh-stealth" title="Stealth">${SVG.ghost}</button>
-        <button id="gkh-close" title="Close">${SVG.close}</button>
+      <div class="sc" id="SCD">
+        <div class="sc-t">${I.spark}<span>HASIL</span></div>
+        <div class="sc-v" id="SCV">-</div>
+        <div class="sc-d" id="SCDD"></div>
       </div>
     </div>
-    <div class="gkh-tabs">
-      <button class="gkh-tab active" data-tab="solve">${SVG.play}<span>Solve</span></button>
-      <button class="gkh-tab" data-tab="chat">${SVG.chat}<span>Chat</span></button>
-      <button class="gkh-tab" data-tab="explain">${SVG.book}<span>Explain</span></button>
-      <button class="gkh-tab" data-tab="settings">${SVG.settings}<span>Config</span></button>
-      <button class="gkh-tab" data-tab="log">${SVG.code}<span>Log</span></button>
-      <button class="gkh-tab" data-tab="credit">${SVG.heart}<span>Credit</span></button>
-    </div>
-    <div class="gkh-body" id="gkh-body">
-      <div class="gkh-tab-panel active" data-panel="solve">
-        <div class="gkh-tip" id="gkh-tip">${SVG.sparkle}<span>Groq · openai/gpt-oss-120b</span></div>
-        <div class="gkh-persona" id="gkh-persona">Persona: —</div>
-        <div class="gkh-row" style="margin-top:6px">
-          <button class="gkh-btn gkh-btn-main" id="gkh-solve">${SVG.rocket}<span>JAWAB SOAL SEKARANG</span></button>
+
+    <div class="p" data-p="chat">
+      <div class="cw">
+        <div class="cw-h"><span style="display:flex;gap:5px;align-items:center">${I.chat}<span id="CM">Chat · —</span></span><button style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:0" id="CC">${I.trash}</button></div>
+        <div class="cw-m" id="MS">
+          <div class="m a">Halo! Ketik perintah auto-solve, contoh: "kerjain nomor 1-5" · "jawab nomor 3"</div>
         </div>
-        <div class="gkh-progress" id="gkh-progress"><div class="gkh-progress-fill" id="gkh-progress-fill"></div></div>
-        <div class="gkh-row-3" style="margin-top:14px">
-          <button class="gkh-btn gkh-btn-sec gkh-btn-sm" id="gkh-parse">${SVG.search}<span>SCAN</span></button>
-          <button class="gkh-btn gkh-btn-stealth gkh-btn-sm" id="gkh-auto">${SVG.play}<span>AUTO</span></button>
-          <button class="gkh-btn gkh-btn-danger gkh-btn-sm" id="gkh-clear">${SVG.trash}<span>CLEAR</span></button>
+        <div class="chips">
+          <span class="ch" data-p="kerjain nomor 1-dst">Semua</span>
+          <span class="ch" data-p="kerjain nomor 1-5">1-5</span>
+          <span class="ch" data-p="Jelaskan soal ini">Jelaskan</span>
+          <span class="ch" data-p="Ringkas">Ringkas</span>
         </div>
-        <div class="gkh-score" id="gkh-score">
-          <div class="gkh-score-h">${SVG.star}<span>HASIL</span></div>
-          <div class="gkh-score-v" id="gkh-score-v">-</div>
-          <div class="gkh-score-d" id="gkh-score-d"></div>
-        </div>
-      </div>
-      <div class="gkh-tab-panel" data-panel="chat">
-        <div class="gkh-chat-wrap">
-          <div class="gkh-chat-hdr">
-            <span style="display:flex;align-items:center;gap:6px">${SVG.chat}<span id="gkh-chat-model">Chat AI · —</span></span>
-            <button style="background:none;border:none;color:#94a3b8;cursor:pointer;padding:2px" id="gkh-chat-clear">${SVG.trash}</button>
-          </div>
-          <div class="gkh-chat-msgs" id="gkh-chat-msgs">
-            <div class="gkh-msg ai">Halo! Ketik perintah auto-solve: "kerjain nomor 1-dst" · "jawab nomor 3"</div>
-          </div>
-          <div class="gkh-chat-chip">
-            <span class="gkh-chip" data-p="kerjain nomor 1-dst">Semua soal</span>
-            <span class="gkh-chip" data-p="kerjain nomor 1-5">Nomor 1-5</span>
-            <span class="gkh-chip" data-p="Jelaskan konsep ini">Jelaskan</span>
-            <span class="gkh-chip" data-p="Ringkas jawaban ini">Ringkas</span>
-          </div>
-          <div class="gkh-chat-input">
-            <textarea id="gkh-chat-input" placeholder="Ketik pesan atau perintah... (Enter kirim)" rows="1"></textarea>
-            <button class="gkh-chat-send" id="gkh-chat-send">${SVG.send}</button>
-          </div>
-        </div>
-      </div>
-      <div class="gkh-tab-panel" data-panel="explain">
-        <div class="gkh-expl-list" id="gkh-expl-list"><div style="color:#64748b;font-size:11px;text-align:center;padding:24px">✦ Belum ada penjelasan ✦</div></div>
-      </div>
-      <div class="gkh-tab-panel" data-panel="settings">
-        <div class="gkh-row"><label class="gkh-lbl">${SVG.sparkle}<span>Provider</span></label><select class="gkh-select" id="gkh-provider"><option value="groq">Groq</option><option value="cloudflare">Cloudflare AI</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
-        <div class="gkh-row"><label class="gkh-lbl">${SVG.code}<span>Model</span></label><select class="gkh-select" id="gkh-model"></select></div>
-        <div class="gkh-row" id="gkh-key-row"><label class="gkh-lbl">${SVG.id}<span>API Key</span><span class="gkh-hint" id="gkh-key-hint">auto</span></label><div class="gkh-input-wrap"><input class="gkh-input" id="gkh-key" type="password" autocomplete="off"><button class="gkh-eye" id="gkh-eye" type="button">${SVG.eye}</button></div></div>
-        <div class="gkh-row">
-          <div class="gkh-switch-row"><div><div class="gkh-switch-lbl">Auto-Scroll</div><div class="gkh-switch-desc">Scroll ke tile jawaban</div></div><label class="gkh-toggle"><input type="checkbox" id="gkh-opt-scroll" checked><span class="gkh-slider"></span></label></div>
-          <div class="gkh-switch-row"><div><div class="gkh-switch-lbl">Auto-Explanation</div><div class="gkh-switch-desc">AI kasih alasan (WAJIB ON)</div></div><label class="gkh-toggle"><input type="checkbox" id="gkh-opt-explain" checked><span class="gkh-slider"></span></label></div>
-          <div class="gkh-switch-row"><div><div class="gkh-switch-lbl">Show Personality</div><div class="gkh-switch-desc">Tampilkan persona AI</div></div><label class="gkh-toggle"><input type="checkbox" id="gkh-opt-persona" checked><span class="gkh-slider"></span></label></div>
-        </div>
-        <div class="gkh-row-2"><button class="gkh-btn gkh-btn-sec gkh-btn-sm" id="gkh-save">${SVG.download}<span>SAVE</span></button><button class="gkh-btn gkh-btn-sec gkh-btn-sm" id="gkh-load">${SVG.rocket}<span>LOAD</span></button></div>
-      </div>
-      <div class="gkh-tab-panel" data-panel="log">
-        <div class="gkh-row-2" style="margin-bottom:10px">
-          <button class="gkh-btn gkh-btn-sec gkh-btn-sm" id="gkh-export">${SVG.download}<span>EXPORT</span></button>
-          <button class="gkh-btn gkh-btn-danger gkh-btn-sm" id="gkh-clearlog">${SVG.trash}<span>CLEAR</span></button>
-        </div>
-        <div class="gkh-log" id="gkh-log"><div>Ready.</div></div>
-      </div>
-      <div class="gkh-tab-panel" data-panel="credit">
-        <div style="background:linear-gradient(160deg,rgba(99,102,241,.15),rgba(139,92,246,.08));border:1px solid rgba(139,92,246,.35);border-radius:16px;padding:22px;text-align:center">
-          <div style="width:80px;height:80px;margin:0 auto 14px;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a855f7);border-radius:50%;display:flex;align-items:center;justify-content:center">${SVG.user}</div>
-          <div style="font-size:22px;font-weight:900;background:linear-gradient(135deg,#a5b4fc,#c4b5fd,#e9d5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ALIP / ALRECT</div>
-          <div style="font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-top:4px;margin-bottom:16px">Developer</div>
-          <a style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:linear-gradient(135deg,#14532d,#166534);border:1px solid rgba(74,222,128,.4);border-radius:12px;color:#fff;font-weight:800;text-decoration:none" href="https://wa.me/6282192401340" target="_blank">
-            ${SVG.whatsapp}
-            <div style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3">
-              <span style="font-size:9px;opacity:.8;letter-spacing:1px">ORDER NOW</span>
-              <span style="font-size:14px;font-weight:900">+62 821-9240-1340</span>
-            </div>
-          </a>
-          <div style="margin-top:16px;font-size:9.5px;color:#475569">GFS Kahoot Solver v1 · © 2026</div>
+        <div class="cw-i">
+          <textarea id="CI" placeholder="Ketik... (Enter kirim)" rows="1"></textarea>
+          <button class="cw-s" id="CS">${I.send}</button>
         </div>
       </div>
     </div>
-    <div class="gkh-footer"><span>⚡ GKH v1 · TF-Reasoning</span><span class="gkh-badge" id="gkh-footer-stat">idle</span></div>`;
-  document.body.appendChild(panel);
 
-  const $ = (id) => document.getElementById(id);
-  document.querySelectorAll('.gkh-tab').forEach((tab) => {
-    tab.onclick = () => {
-      document.querySelectorAll('.gkh-tab').forEach((t) => t.classList.remove('active'));
-      document.querySelectorAll('.gkh-tab-panel').forEach((p) => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.querySelector('.gkh-tab-panel[data-panel="' + tab.dataset.tab + '"]').classList.add('active');
-    };
+    <div class="p" data-p="explain">
+      <div class="exl" id="EX"><div style="color:#64748b;font-size:10px;text-align:center;padding:20px">✦ Belum ada ✦</div></div>
+    </div>
+
+    <div class="p" data-p="settings">
+      <div class="mb"><div class="lbl">${I.spark}<span>Provider</span></div><select class="sel" id="PR"><option value="groq">Groq</option><option value="cloudflare">Cloudflare</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option></select></div>
+      <div class="mb"><div class="lbl">${I.code}<span>Model</span></div><select class="sel" id="MD"></select></div>
+      <div class="mb"><div class="lbl">${I.bolt}<span>API Key</span><span id="KH">auto</span></div><div class="iw"><input class="inp" id="KY" type="password"><button class="iey" id="EY">${I.eye}</button></div></div>
+      <div class="mb">
+        <div class="sw"><div><div class="sw-t">Auto-Scroll</div><div class="sw-d">Scroll ke tile</div></div><label class="tg"><input type="checkbox" id="OS" checked><span class="ts"></span></label></div>
+        <div class="sw"><div><div class="sw-t">Auto-Explain</div><div class="sw-d">WAJIB ON</div></div><label class="tg"><input type="checkbox" id="OE" checked><span class="ts"></span></label></div>
+        <div class="sw"><div><div class="sw-t">Show Persona</div><div class="sw-d">Tampil</div></div><label class="tg"><input type="checkbox" id="OP" checked><span class="ts"></span></label></div>
+      </div>
+      <div class="g2"><button class="btn btn-s btn-sm" id="SV">SAVE</button><button class="btn btn-s btn-sm" id="LD">LOAD</button></div>
+    </div>
+
+    <div class="p" data-p="log">
+      <div class="g2 mb"><button class="btn btn-s btn-sm" id="EXB">EXPORT</button><button class="btn btn-d btn-sm" id="CLB">CLEAR</button></div>
+      <div class="log" id="LG"><div>Ready.</div></div>
+    </div>
+
+    <div class="p" data-p="credit">
+      <div class="cr">
+        <div class="cr-a">${I.user}</div>
+        <div class="cr-n">ALIP / ALRECT</div>
+        <div class="cr-r">Developer</div>
+        <a class="cr-w" href="https://wa.me/6282192401340" target="_blank">${I.wa}<div class="cr-w-t"><span class="cr-w-l">ORDER NOW</span><span class="cr-w-n">+62 821-9240-1340</span></div></a>
+        <div class="cr-f">GFS Kahoot Compact v2 · © 2026</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="ft"><span>⚡ GKH v2</span><span class="bg" id="FST">idle</span></div>`;
+  document.body.appendChild(root);
+
+  // ─── HELPERS ───
+  const $ = id => document.getElementById(id);
+  const qs = (s, r) => { try { return (r || document).querySelector(s); } catch { return null; } };
+  const qsa = (s, r) => { try { return [...(r || document).querySelectorAll(s)]; } catch { return []; } };
+  const firstOf = (arr, r) => { for (const s of arr) { const el = qs(s, r); if (el) return el; } return null; };
+  const allOf = (arr, r) => { const o = new Set(); for (const s of arr) qsa(s, r).forEach(e => o.add(e)); return [...o]; };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').replace(/[.,;:!?'"()\-–—]/g, '').trim();
+
+  const log = (m, c = 'in') => {
+    const el = $('LG'); const d = document.createElement('div');
+    d.className = c; d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + m;
+    el.appendChild(d); el.scrollTop = el.scrollHeight;
+    while (el.children.length > 400) el.removeChild(el.firstChild);
+  };
+  const setSt = t => { const b = $('FST'); b.textContent = t; b.className = 'bg'; if (t === 'running') b.classList.add('b'); else if (t === 'error') b.classList.add('e'); else if (t === 'done') b.classList.add('d'); };
+
+  // ─── TABS ───
+  qsa('.t-b').forEach(b => b.onclick = () => {
+    qsa('.t-b').forEach(x => x.classList.remove('on'));
+    qsa('.p').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    qs('.p[data-p="' + b.dataset.t + '"]').classList.add('on');
   });
 
-  const log = (msg, cls = 'info') => {
-    const el = $('gkh-log');
-    const d = document.createElement('div');
-    d.className = cls;
-    d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-    el.appendChild(d);
-    el.scrollTop = el.scrollHeight;
-    while (el.children.length > 500) el.removeChild(el.firstChild);
-  };
-  const setStatus = (txt) => { const b = $('gkh-footer-stat'); b.textContent = txt; b.className = 'gkh-badge'; if (txt === 'running') b.classList.add('busy'); else if (txt === 'error') b.classList.add('error'); else if (txt === 'done') b.classList.add('done'); };
+  // ─── HEADER ───
+  $('ST').onclick = () => { S.stealth = true; root.style.display = 'none'; pill.classList.add('on'); };
+  $('CL').onclick = () => { root.remove(); pill.remove(); if (S.loop) clearInterval(S.loop); window.__GKH_LOADED__ = false; };
+  $('MN').onclick = () => { const b = $('BD'), t = $('T'), f = root.querySelector('.ft'); const h = b.style.display === 'none'; b.style.display = h ? '' : 'none'; t.style.display = h ? '' : 'none'; f.style.display = h ? '' : 'none'; $('MN').innerHTML = h ? I.min : I.max; };
+  $('EY').onclick = () => { const i = $('KY'); i.type = i.type === 'password' ? 'text' : 'password'; };
 
-  const enterStealth = () => { state.stealth = true; panel.style.display = 'none'; stealthBtn.classList.add('active'); };
-  $('gkh-stealth').onclick = enterStealth;
-  $('gkh-close').onclick = () => { panel.remove(); stealthBtn.remove(); if (state.autoInterval) clearInterval(state.autoInterval); window.__GKH_LOADED__ = false; };
-  $('gkh-eye').onclick = () => { const i = $('gkh-key'); i.type = i.type === 'password' ? 'text' : 'password'; };
-
+  // ─── CONFIG ───
   const updateModels = () => {
-    const p = $('gkh-provider').value;
-    const sel = $('gkh-model'); sel.innerHTML = '';
-    (MODELS[p] || []).forEach((m) => { const o = document.createElement('option'); o.value = m; o.textContent = m; sel.appendChild(o); });
-    if (HARDCODED_KEYS[p]) { $('gkh-key').value = HARDCODED_KEYS[p]; $('gkh-key-hint').textContent = 'auto'; }
-    else { $('gkh-key').value = ''; $('gkh-key-hint').textContent = 'manual'; }
-    const bs = BATCH_SIZE[p] || 2;
-    $('gkh-tip').innerHTML = SVG.sparkle + '<span>' + p + ' · ' + sel.value + ' · batch ' + bs + ' · temp 0.0</span>';
-    if ($('gkh-opt-persona').checked) $('gkh-persona').textContent = 'Persona: ' + (PERSONALITY[p] || '—');
-    $('gkh-chat-model').textContent = 'Chat AI · ' + p + ' / ' + sel.value;
+    const p = $('PR').value; const s = $('MD'); s.innerHTML = '';
+    (MODELS[p] || []).forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; s.appendChild(o); });
+    if (KEYS[p]) { $('KY').value = KEYS[p]; $('KH').textContent = 'auto'; } else { $('KY').value = ''; $('KH').textContent = 'manual'; }
+    $('TIP').innerHTML = I.spark + '<span>' + p + ' · ' + s.value + ' · batch ' + (BATCH[p] || 2) + '</span>';
+    if ($('OP').checked) $('PN').textContent = PERSONA[p] || '—';
+    $('CM').textContent = 'Chat · ' + p + '/' + s.value;
   };
-  $('gkh-provider').onchange = updateModels;
-  $('gkh-model').onchange = () => {
-    $('gkh-tip').innerHTML = SVG.sparkle + '<span>' + $('gkh-provider').value + ' · ' + $('gkh-model').value + '</span>';
-    $('gkh-chat-model').textContent = 'Chat AI · ' + $('gkh-provider').value + ' / ' + $('gkh-model').value;
-  };
-  $('gkh-opt-persona').onchange = () => { $('gkh-persona').style.display = $('gkh-opt-persona').checked ? 'block' : 'none'; if ($('gkh-opt-persona').checked) $('gkh-persona').textContent = 'Persona: ' + (PERSONALITY[$('gkh-provider').value] || '—'); };
+  $('PR').onchange = updateModels;
+  $('MD').onchange = () => { $('CM').textContent = 'Chat · ' + $('PR').value + '/' + $('MD').value; };
+  $('OP').onchange = () => { $('PN').style.display = $('OP').checked ? 'block' : 'none'; if ($('OP').checked) $('PN').textContent = PERSONA[$('PR').value] || '—'; };
+  $('SV').onclick = () => { localStorage.setItem('gkh2_cfg', JSON.stringify({ p: $('PR').value, m: $('MD').value, k: $('KY').value, s: $('OS').checked, e: $('OE').checked, o: $('OP').checked })); log('Saved.', 'ok'); };
+  $('LD').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gkh2_cfg') || '{}'); if (c.p) { $('PR').value = c.p; updateModels(); } if (c.m) $('MD').value = c.m; if (c.k && !KEYS[$('PR').value]) $('KY').value = c.k; if (c.s !== undefined) $('OS').checked = c.s; if (c.e !== undefined) $('OE').checked = c.e; if (c.o !== undefined) $('OP').checked = c.o; log('Loaded.', 'ok'); } catch { log('Load gagal', 'er'); } };
+  $('EXB').onclick = () => { const t = [...$('LG').children].map(c => c.textContent).join('\n'); const b = new Blob([t], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gkh-log.txt'; a.click(); };
+  $('CLB').onclick = () => { $('LG').innerHTML = ''; };
 
-  $('gkh-save').onclick = () => { localStorage.setItem('gkh_config', JSON.stringify({ provider: $('gkh-provider').value, model: $('gkh-model').value, key: $('gkh-key').value, oS: $('gkh-opt-scroll').checked, oE: $('gkh-opt-explain').checked, oP: $('gkh-opt-persona').checked })); log('Saved.', 'ok'); };
-  $('gkh-load').onclick = () => { try { const c = JSON.parse(localStorage.getItem('gkh_config') || '{}'); if (c.provider) { $('gkh-provider').value = c.provider; updateModels(); } if (c.model) $('gkh-model').value = c.model; if (c.key && !HARDCODED_KEYS[$('gkh-provider').value]) $('gkh-key').value = c.key; if (c.oS !== undefined) $('gkh-opt-scroll').checked = c.oS; if (c.oE !== undefined) $('gkh-opt-explain').checked = c.oE; if (c.oP !== undefined) $('gkh-opt-persona').checked = c.oP; log('Loaded.', 'ok'); } catch (e) { log('Load gagal', 'err'); } };
+  // ─── DRAG ───
+  const H = $('H'); let dr = false, dx = 0, dy = 0;
+  const sDr = (x, y) => { const r = root.getBoundingClientRect(); dr = true; dx = x - r.left; dy = y - r.top; root.style.transform = 'none'; root.style.animation = 'none'; root.style.left = r.left + 'px'; root.style.top = r.top + 'px'; };
+  const mDr = (x, y) => { if (!dr) return; const r = root.getBoundingClientRect(); root.style.left = Math.max(0, Math.min(innerWidth - r.width, x - dx)) + 'px'; root.style.top = Math.max(0, Math.min(innerHeight - 40, y - dy)) + 'px'; };
+  H.onmousedown = e => { if (e.target.closest('button')) return; sDr(e.clientX, e.clientY); };
+  H.ontouchstart = e => { if (e.target.closest('button')) return; sDr(e.touches[0].clientX, e.touches[0].clientY); };
+  document.onmousemove = e => mDr(e.clientX, e.clientY);
+  document.ontouchmove = e => mDr(e.touches[0].clientX, e.touches[0].clientY);
+  document.onmouseup = () => dr = false;
+  document.ontouchend = () => dr = false;
 
-  $('gkh-export').onclick = () => { const txt = [...$('gkh-log').children].map((c) => c.textContent).join('\n'); const blob = new Blob([txt], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'gkh-log.txt'; a.click(); };
-  $('gkh-clearlog').onclick = () => { $('gkh-log').innerHTML = ''; };
-  $('gkh-min').onclick = () => { const b = $('gkh-body'), t = panel.querySelector('.gkh-tabs'), f = panel.querySelector('.gkh-footer'); const h = b.style.display === 'none'; b.style.display = h ? '' : 'none'; t.style.display = h ? '' : 'none'; f.style.display = h ? '' : 'none'; $('gkh-min').innerHTML = h ? SVG.minus : SVG.plus; };
+  // ─── KAHOOT PARSER ───
+  const Q_SEL = ['[data-functional-selector="question-title"]','[data-functional-selector*="question"]','[class*="question-title"]','[class*="QuestionTitle"]','[class*="question__title"]','h1[class*="question"]','h2[class*="question"]','[class*="questionText"]','[class*="prompt"]','h1','h2'];
+  const O_SEL = ['[data-functional-selector*="answer"]','[data-functional-selector*="choice"]','[class*="answer-tile"]','[class*="AnswerTile"]','[class*="answerButton"]','[class*="answer-button"]','[class*="answer__"]','[class*="choice"]','button[class*="answer"]','[role="button"][class*="answer"]'];
+  const N_SEL = ['[data-functional-selector="next-button"]','[data-functional-selector*="next"]','[class*="next-button"]','[class*="nextButton"]','button[class*="next"]'];
 
-  const hdr = $('gkh-hdr');
-  let drag = false, ox = 0, oy = 0;
-  const sD = (x, y) => { const r = panel.getBoundingClientRect(); drag = true; ox = x - r.left; oy = y - r.top; panel.style.transform = 'none'; panel.style.animation = 'none'; panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px'; };
-  const mD = (x, y) => { if (!drag) return; const r = panel.getBoundingClientRect(); panel.style.left = Math.max(0, Math.min(window.innerWidth - r.width, x - ox)) + 'px'; panel.style.top = Math.max(0, Math.min(window.innerHeight - 60, y - oy)) + 'px'; };
-  hdr.onmousedown = (e) => { if (e.target.closest('button')) return; sD(e.clientX, e.clientY); };
-  hdr.ontouchstart = (e) => { if (e.target.closest('button')) return; sD(e.touches[0].clientX, e.touches[0].clientY); };
-  document.onmousemove = (e) => mD(e.clientX, e.clientY);
-  document.ontouchmove = (e) => mD(e.touches[0].clientX, e.touches[0].clientY);
-  document.onmouseup = () => { drag = false; };
-  document.ontouchend = () => { drag = false; };
+  const ex = el => { if (!el) return ''; let t = (el.innerText || el.textContent || '').trim(); t = t.replace(/^[A-Z][.)\-:]\s*/, '').replace(/^\d+[.)\-:]\s*/, '').trim(); return t; };
+  const audio = c => { const s = ['audio','[class*="audio"]','[class*="speaker"]','[class*="volume"]','button[aria-label*="play" i]','svg[class*="speaker"]','svg[class*="volume"]']; for (const x of s) { try { if (c.querySelector(x)) return true; } catch {} } return false; };
+  const TFR = /^(benar|salah|true|false|b\s*\/\s*s|t\s*\/\s*f|ya|tidak|yes|no)$/i;
+  const isTF = q => q.opts.length === 2 && q.opts.every(o => TFR.test(o.text.trim()));
+  const findTF = (q, t) => { const p = t ? /^(benar|true|ya|yes)$/i : /^(salah|false|tidak|no)$/i; for (const o of q.opts) if (p.test(o.text.trim())) return o.el; return null; };
 
-  // ═══════════════════════════════════════════
-  // KAHOOT PARSER
-  // ═══════════════════════════════════════════
-  const KH_QUESTION_SELECTORS = [
-    '[data-functional-selector="question-title"]',
-    '[data-functional-selector*="question"]',
-    '[class*="question-title"]',
-    '[class*="QuestionTitle"]',
-    '[class*="question__title"]',
-    'h1[class*="question"]',
-    'h2[class*="question"]',
-    '[class*="questionText"]',
-    '[class*="QuestionText"]',
-    '[class*="prompt"]',
-    'h1', 'h2'
-  ];
-
-  const KH_OPTION_SELECTORS = [
-    '[data-functional-selector*="answer"]',
-    '[data-functional-selector*="choice"]',
-    '[class*="answer-tile"]',
-    '[class*="AnswerTile"]',
-    '[class*="answerButton"]',
-    '[class*="answer-button"]',
-    '[class*="answer__"]',
-    '[class*="choice"]',
-    'button[class*="answer"]',
-    '[role="button"][class*="answer"]'
-  ];
-
-  const KH_NEXT_SELECTORS = [
-    '[data-functional-selector="next-button"]',
-    '[data-functional-selector*="next"]',
-    '[class*="next-button"]',
-    '[class*="nextButton"]',
-    'button[class*="next"]'
-  ];
-
-  const qs = (sel, root) => { try { return (root || document).querySelector(sel); } catch { return null; } };
-  const qsa = (sel, root) => { try { return [...(root || document).querySelectorAll(sel)]; } catch { return []; } };
-  const firstOf = (sels, root) => { for (const s of sels) { const el = qs(s, root); if (el) return el; } return null; };
-  const allOf = (sels, root) => {
-    const out = new Set();
-    for (const s of sels) qsa(s, root).forEach(e => out.add(e));
-    return [...out];
-  };
-
-  const extractText = (el) => {
-    if (!el) return '';
-    let txt = (el.innerText || el.textContent || '').trim();
-    txt = txt.replace(/^[A-Z][.)\-:]\s*/, '').replace(/^\d+[.)\-:]\s*/, '').trim();
-    return txt;
-  };
-
-  const hasAudio = (container) => {
-    const sels = ['audio', '[class*="audio"]', '[class*="speaker"]', '[class*="volume"]', 'button[aria-label*="play" i]', 'svg[class*="speaker"]', 'svg[class*="volume"]'];
-    for (const s of sels) { try { if (container.querySelector(s)) return true; } catch {} }
-    return false;
-  };
-
-  const TF_REGEX = /^(benar|salah|true|false|b\s*\/\s*s|t\s*\/\s*f|ya|tidak|yes|no)$/i;
-  const isTrueFalseQuestion = (q) => q.opts.length === 2 && q.opts.every(o => TF_REGEX.test(o.text.trim()));
-
-  const findTFOption = (q, wantTrue) => {
-    const truePat = /^(benar|true|ya|yes)$/i;
-    const falsePat = /^(salah|false|tidak|no)$/i;
-    const pat = wantTrue ? truePat : falsePat;
-    for (const o of q.opts) if (pat.test(o.text.trim())) return o.el;
-    return null;
-  };
-
-  const parseKahootCurrent = () => {
-    let qText = '';
-    const qEl = firstOf(KH_QUESTION_SELECTORS);
-    if (qEl) qText = extractText(qEl);
-
-    // Opsi: cari tile yang clickable di area jawaban
-    let opts = allOf(KH_OPTION_SELECTORS).map(el => {
-      const txt = extractText(el);
-      return txt ? { text: txt, el } : null;
-    }).filter(Boolean);
-
-    // Fallback: cari button besar (Kahoot tiles)
+  const parseKahoot = () => {
+    let qt = ''; const qe = firstOf(Q_SEL); if (qe) qt = ex(qe);
+    let opts = allOf(O_SEL).map(el => { const t = ex(el); return t ? { text: t, el } : null; }).filter(Boolean);
     if (opts.length < 2) {
       const btns = qsa('button, [role="button"]').filter(b => {
         if (b.offsetParent === null) return false;
-        const t = extractText(b);
-        if (!t || t.length > 400) return false;
-        const rect = b.getBoundingClientRect();
-        if (rect.width < 80 || rect.height < 40) return false;
+        const t = ex(b); if (!t || t.length > 400) return false;
+        const r = b.getBoundingClientRect(); if (r.width < 80 || r.height < 40) return false;
         if (/next|submit|lanjut|kirim|back|kembali|exit|menu|settings/i.test(t)) return false;
         return true;
       });
       const seen = new Set();
-      opts = btns.filter(b => { const t = extractText(b); if (seen.has(t)) return false; seen.add(t); return true; })
-        .map(b => ({ text: extractText(b), el: b }));
+      opts = btns.filter(b => { const t = ex(b); if (seen.has(t)) return false; seen.add(t); return true; }).map(b => ({ text: ex(b), el: b }));
     }
-
-    // Dedup by text
     const seen = new Set();
     opts = opts.filter(o => { if (seen.has(o.text)) return false; seen.add(o.text); return true; });
-
-    // Kalau opts > 6 kemungkinan parser kena noise — cut ke yang paling besar
-    if (opts.length > 6) {
-      opts = opts.map(o => {
-        const r = o.el.getBoundingClientRect();
-        return { ...o, area: r.width * r.height };
-      }).sort((a, b) => b.area - a.area).slice(0, 6);
-    }
-
-    return { idx: 0, qText, opts, hasAudio: hasAudio(document.body) };
+    if (opts.length > 6) opts = opts.map(o => { const r = o.el.getBoundingClientRect(); return { ...o, a: r.width * r.height }; }).sort((x, y) => y.a - x.a).slice(0, 6);
+    return { idx: 0, qText: qt, opts, hasAudio: audio(document.body) };
   };
-
-  const parseKahootAll = () => {
-    // Kahoot single question per screen
-    const cur = parseKahootCurrent();
-    if (cur.opts.length >= 2) return [cur];
-    return [];
-  };
-
-  const findNextButton = () => {
-    for (const s of KH_NEXT_SELECTORS) {
-      const b = qs(s);
-      if (b && b.offsetParent !== null && !b.disabled) return b;
-    }
-    return null;
-  };
-
-  $('gkh-parse').onclick = () => {
-    const all = parseKahootAll();
-    log('Terdeteksi ' + all.length + ' soal.', 'ok');
-    all.forEach((q) => {
-      const tf = isTrueFalseQuestion(q);
-      const tag = q.hasAudio ? '[AUDIO-SKIP]' : (tf ? '[TRUE/FALSE]' : '[MCQ/' + q.opts.length + ']');
-      log(tag + ' Q: ' + (q.qText || '(no text)').slice(0, 80), q.hasAudio ? 'warn' : 'info');
-      q.opts.forEach((o, j) => log('   ' + (j + 1) + '. ' + o.text.slice(0, 70), 'info'));
-    });
-    if (!all.length) log('Nggak ketemu soal. Coba tunggu soal muncul, atau cek Console.', 'err');
-    const nb = findNextButton();
-    log('Next button: ' + (nb ? '✓' : '✗'), nb ? 'ok' : 'warn');
-  };
-
-  $('gkh-clear').onclick = () => {
-    log('Kahoot nggak bisa di-clear — jawaban langsung submit.', 'warn');
-  };
-
-  $('gkh-auto').onclick = () => {
-    if (state.autoInterval) { clearInterval(state.autoInterval); state.autoInterval = null; $('gkh-auto').innerHTML = SVG.play + '<span>AUTO</span>'; log('Auto OFF', 'warn'); return; }
-    log('Auto ON — scan tiap 3 detik', 'ok');
-    $('gkh-auto').innerHTML = SVG.play + '<span>STOP</span>';
-    state.autoInterval = setInterval(() => {
-      if (!state.running) $('gkh-solve').click();
-    }, 3000);
-  };
+  const parseAll = () => { const c = parseKahoot(); return c.opts.length >= 2 ? [c] : []; };
+  const findNext = () => { for (const s of N_SEL) { const b = qs(s); if (b && b.offsetParent !== null && !b.disabled) return b; } return null; };
 
   // ─── AI CALLERS ───
-  const callGroq = async (key, model, prompt, persona) => {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.0, max_tokens: 3000 })
-    });
-    if (!res.ok) throw new Error('Groq ' + res.status + ': ' + (await res.text()).slice(0, 150));
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-  const callOpenRouter = async (key, model, prompt, persona) => {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.0, max_tokens: 3000 })
-    });
-    if (!res.ok) throw new Error('OpenRouter ' + res.status);
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-  const callOpenAI = async (key, model, prompt, persona) => {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.0, max_tokens: 3000 })
-    });
-    if (!res.ok) throw new Error('OpenAI ' + res.status);
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-  const callCloudflare = async (token, model, prompt, persona) => {
-    const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
-    const res = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }] })
-    });
-    if (!res.ok) throw new Error('Cloudflare ' + res.status);
-    const data = await res.json();
-    if (!data.success) throw new Error('Cloudflare fail');
-    let text = data?.result?.response;
-    if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
-    if (!text) throw new Error('Cloudflare empty.');
-    return text;
-  };
-  const chatGroq = async (key, model, messages, persona) => {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Asisten chat cerdas. Jawab natural, ringkas.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
-    });
-    if (!res.ok) throw new Error('Groq ' + res.status);
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-  const chatOpenRouter = async (key, model, messages, persona) => {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona }, ...messages], temperature: 0.6, max_tokens: 2000 })
-    });
-    if (!res.ok) throw new Error('OpenRouter ' + res.status);
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-  const chatOpenAI = async (key, model, messages, persona) => {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona }, ...messages], temperature: 0.6, max_tokens: 2000 })
-    });
-    if (!res.ok) throw new Error('OpenAI ' + res.status);
-    const data = await res.json();
-    return data.choices[0].message.content;
-  };
-  const chatCloudflare = async (token, model, messages, persona) => {
-    const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
-    const res = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ messages: [{ role: 'system', content: persona }, ...messages] })
-    });
-    if (!res.ok) throw new Error('Cloudflare ' + res.status);
-    const data = await res.json();
-    if (!data.success) throw new Error('Cloudflare fail');
-    let text = data?.result?.response;
-    if (!text && data?.result?.choices?.[0]?.message?.content) text = data.result.choices[0].message.content;
-    if (!text) throw new Error('Cloudflare empty.');
-    return text;
-  };
-  const chatDispatch = async (provider, key, model, messages, persona) => {
-    if (provider === 'groq') return chatGroq(key, model, messages, persona);
-    if (provider === 'cloudflare') return chatCloudflare(key, model, messages, persona);
-    if (provider === 'openrouter') return chatOpenRouter(key, model, messages, persona);
-    return chatOpenAI(key, model, messages, persona);
+  const call = async (prov, key, model, prompt, persona, chatMode = false) => {
+    const sys = chatMode ? persona + ' Asisten chat cerdas. Jawab natural, ringkas.' : persona;
+    let url, headers = { 'Content-Type': 'application/json' }, body;
+    if (prov === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers.Authorization = 'Bearer ' + key; body = { model, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }], temperature: 0.0, max_tokens: 3000 }; if (!chatMode) body.response_format = { type: 'json_object' }; }
+    else if (prov === 'openrouter') { url = 'https://openrouter.ai/api/v1/chat/completions'; headers.Authorization = 'Bearer ' + key; body = { model, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }], temperature: 0.0, max_tokens: 3000 }; if (!chatMode) body.response_format = { type: 'json_object' }; }
+    else if (prov === 'openai') { url = 'https://api.openai.com/v1/chat/completions'; headers.Authorization = 'Bearer ' + key; body = { model, messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }], temperature: 0.0, max_tokens: 3000 }; if (!chatMode) body.response_format = { type: 'json_object' }; }
+    else if (prov === 'cloudflare') { url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACC + '/ai/run/' + model; headers.Authorization = 'Bearer ' + key; body = { messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }] }; }
+    const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(prov + ' ' + r.status + ': ' + (await r.text()).slice(0, 120));
+    const d = await r.json();
+    if (prov === 'cloudflare') { if (!d.success) throw new Error('CF fail'); let t = d?.result?.response; if (!t && d?.result?.choices?.[0]?.message?.content) t = d.result.choices[0].message.content; if (!t) throw new Error('CF empty'); return t; }
+    return d.choices[0].message.content;
   };
 
-  // ─── SOLVE UTILS ───
-  const parseResponse = (raw) => {
-    let data;
-    try { data = JSON.parse(raw); }
-    catch {
+  const parseRes = raw => {
+    let d;
+    try { d = JSON.parse(raw); } catch {
       const a = raw.match(/\[[\s\S]*\]/), o = raw.match(/\{[\s\S]*\}/);
-      if (a) data = JSON.parse(a[0]);
-      else if (o) data = JSON.parse(o[0]);
-      else throw new Error('Not JSON');
+      if (a) d = JSON.parse(a[0]); else if (o) d = JSON.parse(o[0]); else throw new Error('Not JSON');
     }
-    const list = Array.isArray(data) ? data : (data.answers || data.data || []);
-    if (!Array.isArray(list)) {
-      if (typeof data.t === 'boolean' && Number.isInteger(data.i)) return [{ idx: data.i, tf: data.t, answer: data.t ? 'BENAR' : 'SALAH', confidence: 0.9, reason: data.reason || '' }];
-      throw new Error('Format salah');
-    }
+    if (typeof d === 'object' && !Array.isArray(d) && typeof d.t === 'boolean' && Number.isInteger(d.i)) return [{ idx: d.i, tf: d.t, answer: d.t ? 'BENAR' : 'SALAH', confidence: 0.9, reason: d.reason || '' }];
+    const list = Array.isArray(d) ? d : (d.answers || d.data || []);
+    if (!Array.isArray(list)) throw new Error('Bad fmt');
     return list.map(x => {
       if (!x) return null;
       const idx = Number.isInteger(x.i) ? x.i : (Number.isInteger(x.idx) ? x.idx : null);
       if (idx === null) return null;
       if (typeof x.t === 'boolean') return { idx, tf: x.t, answer: x.t ? 'BENAR' : 'SALAH', confidence: 0.9, reason: x.reason || '' };
-      const answer = x.a || x.answer || null;
-      if (typeof answer !== 'string') return null;
-      return { idx, answer, confidence: Math.min(1, Math.max(0, Number(x.confidence) || 0.85)), reason: x.reason || x.explanation || '' };
+      const a = x.a || x.answer || null;
+      if (typeof a !== 'string') return null;
+      return { idx, answer: a, confidence: Math.min(1, Math.max(0, Number(x.confidence) || 0.85)), reason: x.reason || '' };
     }).filter(Boolean);
   };
 
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const normalize = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').replace(/[.,;:!?'"()\-–—]/g, '').trim();
-
-  const findOption = (q, aiAnswer) => {
-    const raw = String(aiAnswer || '').trim();
-    if (!raw) return { el: null, reason: 'empty' };
-    let m = q.opts.find(o => o.text === raw);
-    if (m) return { el: m.el, reason: 'exact' };
-    const stripped = raw.replace(/^\s*[A-Za-z0-9][.)\-:]\s*/, '').trim();
-    if (stripped !== raw) { m = q.opts.find(o => o.text === stripped); if (m) return { el: m.el, reason: 'exact-strip' }; }
-    const nRaw = normalize(raw), nStrip = normalize(stripped);
-    m = q.opts.find(o => normalize(o.text) === nRaw);
-    if (m) return { el: m.el, reason: 'normal' };
-    if (nStrip !== nRaw) { m = q.opts.find(o => normalize(o.text) === nStrip); if (m) return { el: m.el, reason: 'normal-strip' }; }
-    const cands = q.opts.filter(o => { const no = normalize(o.text); return no.length > 0 && nStrip.length >= no.length * 0.5 && (no.includes(nStrip) || nStrip.includes(no)); });
-    if (cands.length === 1) return { el: cands[0].el, reason: 'contains-1' };
-    if (cands.length > 1) return { el: cands[0].el, reason: 'contains-best' };
-    return { el: null, reason: 'no-match' };
+  const findOpt = (q, ans) => {
+    const raw = String(ans || '').trim(); if (!raw) return { el: null, r: 'empty' };
+    let m = q.opts.find(o => o.text === raw); if (m) return { el: m.el, r: 'exact' };
+    const st = raw.replace(/^\s*[A-Za-z0-9][.)\-:]\s*/, '').trim();
+    if (st !== raw) { m = q.opts.find(o => o.text === st); if (m) return { el: m.el, r: 'exact-strip' }; }
+    const nr = norm(raw), ns = norm(st);
+    m = q.opts.find(o => norm(o.text) === nr); if (m) return { el: m.el, r: 'normal' };
+    if (ns !== nr) { m = q.opts.find(o => norm(o.text) === ns); if (m) return { el: m.el, r: 'normal-strip' }; }
+    const cds = q.opts.filter(o => { const n = norm(o.text); return n.length > 0 && ns.length >= n.length * 0.5 && (n.includes(ns) || ns.includes(n)); });
+    if (cds.length === 1) return { el: cds[0].el, r: 'contains' };
+    if (cds.length > 1) return { el: cds[0].el, r: 'contains-best' };
+    return { el: null, r: 'no-match' };
   };
 
-  const renderExplanations = (allAnswers, questions, allMatches) => {
-    const list = $('gkh-expl-list'); list.innerHTML = '';
-    allAnswers.forEach((a) => {
+  const renderEx = (answers, questions, matches) => {
+    const el = $('EX'); el.innerHTML = '';
+    answers.forEach(a => {
       const q = questions[a.idx]; if (!q) return;
-      const mt = allMatches[a.idx] || {};
-      const item = document.createElement('div');
-      item.className = 'gkh-expl-item';
-      if (mt.reason === 'no-match') item.style.borderLeftColor = '#ef4444';
-      else if (mt.reason && mt.reason.startsWith('contains-best')) item.style.borderLeftColor = '#fbbf24';
-      else item.style.borderLeftColor = '#22c55e';
-      const ansText = a.tf !== undefined ? (a.tf ? 'BENAR' : 'SALAH') : a.answer;
-      item.innerHTML = '<div class="gkh-expl-num">' + SVG.sparkle + ' Q' + (a.idx + 1) + ' · ' + (mt.reason || '') + '</div>' + '<div class="gkh-expl-ans">' + (mt.reason === 'no-match' ? '✗ ' : '✓ ') + ansText + '</div>' + '<div class="gkh-expl-reason">' + (a.reason || q.qText.slice(0, 150)) + '</div>' + '<div class="gkh-expl-conf">Conf: ' + (a.confidence * 100).toFixed(0) + '%</div>';
-      list.appendChild(item);
+      const m = matches[a.idx] || {};
+      const d = document.createElement('div'); d.className = 'ex';
+      if (m.r === 'no-match') d.style.borderLeftColor = '#ef4444';
+      else if (m.r && m.r.startsWith('contains-best')) d.style.borderLeftColor = '#fbbf24';
+      else d.style.borderLeftColor = '#22c55e';
+      const at = a.tf !== undefined ? (a.tf ? 'BENAR' : 'SALAH') : a.answer;
+      d.innerHTML = '<div class="ex-t">' + I.spark + ' Q' + (a.idx + 1) + ' · ' + (m.r || '') + '</div><div class="ex-a">' + (m.r === 'no-match' ? '✗ ' : '✓ ') + at + '</div><div class="ex-r">' + (a.reason || q.qText.slice(0, 140)) + '</div><div class="ex-c">Conf: ' + (a.confidence * 100).toFixed(0) + '%</div>';
+      el.appendChild(d);
     });
   };
 
-  // ─── SOLVE MAIN ───
-  async function doSolveAll() {
-    if (state.running) return;
-    const key = $('gkh-key').value.trim();
-    const provider = $('gkh-provider').value;
-    const model = $('gkh-model').value;
-    if (!key) { log('API key kosong.', 'err'); return; }
+  // ─── SCAN ───
+  $('SC').onclick = () => {
+    const all = parseAll();
+    log('Detected: ' + all.length + ' soal', 'ok');
+    all.forEach(q => {
+      const tf = isTF(q);
+      const tag = q.hasAudio ? '[AUDIO]' : (tf ? '[TF]' : '[MCQ/' + q.opts.length + ']');
+      log(tag + ' ' + (q.qText || '(no text)').slice(0, 70), q.hasAudio ? 'wn' : 'in');
+      q.opts.forEach((o, j) => log('  ' + (j + 1) + '. ' + o.text.slice(0, 60), 'in'));
+    });
+    if (!all.length) log('Nggak ketemu soal. Tunggu soal muncul.', 'er');
+  };
+  $('RS').onclick = () => log('Kahoot nggak bisa di-reset.', 'wn');
+  $('LP').onclick = () => {
+    if (S.loop) { clearInterval(S.loop); S.loop = null; $('LP').innerHTML = I.loop + '<span>AUTO</span>'; log('Auto OFF', 'wn'); return; }
+    log('Auto ON — 3s interval', 'ok'); $('LP').innerHTML = I.loop + '<span>STOP</span>';
+    S.loop = setInterval(() => { if (!S.running) $('GO').click(); }, 3000);
+  };
 
-    const questions = parseKahootAll();
-    if (!questions.length) { log('Nggak ada soal ke-parse! Soal Kahoot mungkin belum muncul.', 'err'); return; }
+  // ─── SOLVE ───
+  $('GO').onclick = async () => {
+    if (S.running) return;
+    const key = $('KY').value.trim(), prov = $('PR').value, model = $('MD').value;
+    if (!key) return log('API key kosong.', 'er');
+    const qs_ = parseAll();
+    if (!qs_.length) return log('Nggak ada soal.', 'er');
+    const audioQ = qs_.filter(q => q.hasAudio);
+    const solv = qs_.filter(q => !q.hasAudio);
+    if (!solv.length) return log('Semua audio.', 'er');
+    if (audioQ.length) log('⚠ ' + audioQ.length + ' audio-skip', 'wn');
 
-    const audioQ = questions.filter(q => q.hasAudio);
-    if (audioQ.length) log('⚠ Soal AUDIO — akan di-skip', 'warn');
+    const tfq = solv.filter(isTF), mcq = solv.filter(q => !isTF(q));
+    log('TF:' + tfq.length + ' MCQ:' + mcq.length, 'in');
 
-    const solvable = questions.filter(q => !q.hasAudio);
-    if (!solvable.length) { log('Semua audio.', 'err'); return; }
+    S.running = true; setSt('running'); $('DOT').classList.add('b');
+    const btn = $('GO'); btn.disabled = true; btn.innerHTML = I.play + '<span>...</span>';
+    $('BAR').classList.add('on');
 
-    const tfQ = solvable.filter(q => isTrueFalseQuestion(q));
-    const mcqQ = solvable.filter(q => !isTrueFalseQuestion(q));
-    log('TF: ' + tfQ.length + ' · MCQ: ' + mcqQ.length, 'info');
-
-    state.running = true; setStatus('running'); $('gkh-status').classList.add('busy');
-    const btn = $('gkh-solve'); btn.disabled = true; btn.innerHTML = SVG.rocket + '<span>PROCESSING...</span>';
-    $('gkh-progress').classList.add('active');
-
-    const wantExplain = $('gkh-opt-explain').checked;
-    const persona = PERSONALITY[provider] || '';
-    const bs = BATCH_SIZE[provider] || 2;
-
-    const allAnswers = [];
-    const allMatches = {};
-    let processed = 0;
-    const total = tfQ.length + mcqQ.length;
+    const wantEx = $('OE').checked, persona = PERSONA[prov] || '', bs = BATCH[prov] || 2;
+    const ans = [], matches = {};
+    let done = 0; const total = tfq.length + mcq.length;
 
     try {
-      // ─── TF HANDLER ───
-      if (tfQ.length) {
-        log('═══ TRUE/FALSE · 1 per call ═══', 'ai');
-        for (const q of tfQ) {
-          const prompt = 'Evaluasi pernyataan. Nilai kebenaran berdasarkan FAKTA ILMIAH/HISTORIS/UMUM yang valid.\n\nPernyataan [ID ' + q.idx + ']: "' + q.qText + '"\n\nLangkah: (1) fakta tentang topik, (2) sesuai tidak, (3) simpulkan.\n\nBalas JSON: {"i":' + q.idx + ',"t":<true|false>,"reason":"<1-2 kalimat fakta>"}';
-
-          let raw;
-          try {
-            if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
-            else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
-            else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
-            else raw = await callOpenAI(key, model, prompt, persona);
-          } catch (e) { log('TF error: ' + e.message, 'err'); continue; }
-
-          try {
-            const answers = parseResponse(raw);
-            answers.forEach(a => { if (a.tf !== undefined) allAnswers.push(a); });
-            log('TF → ' + (answers[0]?.tf ? 'BENAR' : 'SALAH') + ' · ' + (answers[0]?.reason || '').slice(0, 60), 'ok');
-          } catch (e) { log('TF parse fail', 'warn'); }
-          processed++;
-          $('gkh-progress-fill').style.width = Math.round((processed / total) * 100) + '%';
-          await sleep(300);
-        }
+      for (const q of tfq) {
+        const p = 'Evaluasi pernyataan. Nilai kebenaran berbasis FAKTA ILMIAH/HISTORIS/UMUM.\n\nPernyataan [ID ' + q.idx + ']: "' + q.qText + '"\n\nBalas JSON: {"i":' + q.idx + ',"t":<true|false>,"reason":"<1-2 kalimat fakta>"}';
+        try {
+          const r = await call(prov, key, model, p, persona);
+          const a = parseRes(r); a.forEach(x => { if (x.tf !== undefined) ans.push(x); });
+          log('TF → ' + (a[0]?.tf ? 'BENAR' : 'SALAH') + ' · ' + (a[0]?.reason || '').slice(0, 50), 'ok');
+        } catch (e) { log('TF err: ' + e.message, 'er'); }
+        done++; $('BARF').style.width = Math.round(done / total * 100) + '%';
+        await sleep(300);
       }
-
-      // ─── MCQ HANDLER ───
-      if (mcqQ.length) {
-        const batches = Math.ceil(mcqQ.length / bs);
-        log('═══ MCQ · ' + batches + ' batch × ' + bs + ' ═══', 'ai');
+      if (mcq.length) {
+        const batches = Math.ceil(mcq.length / bs);
+        log('MCQ ' + batches + ' batch × ' + bs, 'ai');
         for (let b = 0; b < batches; b++) {
-          const batch = mcqQ.slice(b * bs, b * bs + bs);
-          const prompt = 'Jawab soal pilihan ganda. Pilih opsi PALING DIDUKUNG FAKTA.\n\nBALAS JSON: {"answers":[{"i":<index>,"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan 1 kalimat>"' : '') + '}]}\n\nSOAL:\n' + batch.map(q => '[' + q.idx + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
-
-          let raw;
+          const bt = mcq.slice(b * bs, b * bs + bs);
+          const p = 'Jawab MCQ. Pilih opsi PALING DIDUKUNG FAKTA.\nBALAS JSON: {"answers":[{"i":<idx>,"a":"<teks opsi PERSIS>"' + (wantEx ? ',"reason":"<1 kalimat>"' : '') + '}]}\n\nSOAL:\n' + bt.map(q => '[' + q.idx + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
           try {
-            if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
-            else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
-            else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
-            else raw = await callOpenAI(key, model, prompt, persona);
-          } catch (e) { log('MCQ batch ' + (b + 1) + ' gagal: ' + e.message, 'err'); continue; }
-
-          try {
-            const answers = parseResponse(raw);
-            answers.forEach(a => { if (a.tf === undefined) allAnswers.push(a); });
-            log('MCQ batch ' + (b + 1) + ' → ' + answers.length, 'ok');
-          } catch (e) { log('Parse fail', 'warn'); }
-          processed += batch.length;
-          $('gkh-progress-fill').style.width = Math.round((processed / total) * 100) + '%';
+            const r = await call(prov, key, model, p, persona);
+            const a = parseRes(r); a.forEach(x => { if (x.tf === undefined) ans.push(x); });
+            log('MCQ b' + (b + 1) + ' → ' + a.length, 'ok');
+          } catch (e) { log('MCQ b' + (b + 1) + ' err: ' + e.message, 'er'); }
+          done += bt.length; $('BARF').style.width = Math.round(done / total * 100) + '%';
           await sleep(500);
         }
       }
 
-      // ─── CLICK LOOP ───
-      let clicked = 0, skipped = 0;
-      for (const a of allAnswers) {
-        const q = questions[a.idx]; if (!q) continue;
-
-        let mt;
-        if (a.tf !== undefined) {
-          const el = findTFOption(q, a.tf);
-          mt = el ? { el, reason: a.tf ? 'tf-true' : 'tf-false' } : { el: null, reason: 'no-match-tf' };
-        } else {
-          mt = findOption(q, a.answer);
-        }
-        allMatches[a.idx] = mt;
-
-        if (mt.el) {
-          if ($('gkh-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          await sleep(150); mt.el.click(); clicked++;
-          log('Q' + a.idx + ' ✓ ' + (a.tf !== undefined ? (a.tf ? 'BENAR' : 'SALAH') : a.answer.slice(0, 40)), 'ok');
-        } else { skipped++; log('Q' + a.idx + ' ✗', 'err'); }
-        await sleep(180);
+      let ok = 0, sk = 0;
+      for (const a of ans) {
+        const q = qs_[a.idx]; if (!q) continue;
+        let m;
+        if (a.tf !== undefined) { const el = findTF(q, a.tf); m = el ? { el, r: a.tf ? 'tf-T' : 'tf-F' } : { el: null, r: 'no-tf' }; }
+        else m = findOpt(q, a.answer);
+        matches[a.idx] = m;
+        if (m.el) {
+          if ($('OS').checked) m.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          await sleep(120); m.el.click(); ok++;
+          log('Q' + a.idx + ' ✓ ' + (a.tf !== undefined ? (a.tf ? 'BENAR' : 'SALAH') : a.answer.slice(0, 35)), 'ok');
+        } else { sk++; log('Q' + a.idx + ' ✗ ' + m.r, 'er'); }
+        await sleep(160);
       }
 
-      renderExplanations(allAnswers, questions, allMatches);
-      $('gkh-score').classList.add('active');
-      $('gkh-score-v').textContent = clicked + '/' + solvable.length;
-      $('gkh-score-d').textContent = 'Provider: ' + provider + ' · TF: ' + tfQ.length + ' · MCQ: ' + mcqQ.length + ' · Skip: ' + skipped;
-      setStatus('done');
-      log('═══ SELESAI: ' + clicked + '/' + solvable.length + ' ═══', 'ok');
-    } catch (e) { log('ERROR: ' + e.message, 'err'); setStatus('error'); }
+      renderEx(ans, qs_, matches);
+      $('SCD').classList.add('on');
+      $('SCV').textContent = ok + '/' + solv.length;
+      $('SCDD').textContent = prov + ' · TF:' + tfq.length + ' MCQ:' + mcq.length + ' Skip:' + sk;
+      setSt('done');
+      log('═══ DONE: ' + ok + '/' + solv.length + ' ═══', 'ok');
+    } catch (e) { log('ERR: ' + e.message, 'er'); setSt('error'); }
     finally {
-      btn.disabled = false; btn.innerHTML = SVG.rocket + '<span>JAWAB SOAL SEKARANG</span>';
-      state.running = false; $('gkh-status').classList.remove('busy');
-      setTimeout(() => $('gkh-progress').classList.remove('active'), 1200);
+      btn.disabled = false; btn.innerHTML = I.play + '<span>JAWAB SEKARANG</span>';
+      S.running = false; $('DOT').classList.remove('b');
+      setTimeout(() => $('BAR').classList.remove('on'), 1000);
     }
-  }
-
-  $('gkh-solve').onclick = doSolveAll;
+  };
 
   // ─── CHAT ───
-  const chatMsgs = $('gkh-chat-msgs');
-  const chatInput = $('gkh-chat-input');
-  const chatSend = $('gkh-chat-send');
+  const MS = $('MS'), CI = $('CI'), CS = $('CS');
+  const addMsg = (t, c) => { const d = document.createElement('div'); d.className = 'm ' + c; d.textContent = t; MS.appendChild(d); MS.scrollTop = MS.scrollHeight; return d; };
+  const addTyp = () => { const d = document.createElement('div'); d.className = 'm a'; d.innerHTML = '<div class="dt"><span></span><span></span><span></span></div>'; MS.appendChild(d); MS.scrollTop = MS.scrollHeight; return d; };
+  CI.addEventListener('input', () => { CI.style.height = 'auto'; CI.style.height = Math.min(CI.scrollHeight, 80) + 'px'; });
+  CI.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doChat(); } });
+  CS.onclick = doChat;
 
-  const appendMsg = (text, role) => {
-    const div = document.createElement('div');
-    div.className = 'gkh-msg ' + role;
-    div.textContent = text;
-    chatMsgs.appendChild(div);
-    chatMsgs.scrollTop = chatMsgs.scrollHeight;
-    return div;
+  const parseNum = t => {
+    const r = /(?:kerjain|kerjakan|jawab|jawabin|isi|isin|solve|do|gas|gasin)\s+(?:soal\s+)?(?:nomor|no|number|ke-)\s*(\d+)(?:\s*(?:-|–|—|sampai|sd|to|hingga|ampe|ampek)\s*(\d+|dst|habis|akhir|semua|end|all|beres))?/i;
+    const m = t.match(r); if (!m) return null;
+    const s = parseInt(m[1], 10); if (!s || s < 1) return null;
+    let e = s; if (m[2]) { if (/^\d+$/.test(m[2])) e = parseInt(m[2], 10); else e = Infinity; }
+    if (e !== Infinity && e < s) e = s;
+    return { s, e };
   };
-  const appendTyping = () => {
-    const div = document.createElement('div');
-    div.className = 'gkh-msg ai';
-    div.innerHTML = '<div class="gkh-msg-dot"><span></span><span></span><span></span></div>';
-    chatMsgs.appendChild(div);
-    chatMsgs.scrollTop = chatMsgs.scrollHeight;
-    return div;
-  };
-
-  chatInput.addEventListener('input', () => {
-    chatInput.style.height = 'auto';
-    chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
-  });
-  chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doChat(); } });
-  chatSend.onclick = doChat;
 
   async function doChat() {
-    const text = chatInput.value.trim();
-    if (!text || state.running) return;
-    const key = $('gkh-key').value.trim();
-    const provider = $('gkh-provider').value;
-    const model = $('gkh-model').value;
-    if (!key) { appendMsg('API key kosong.', 'err'); return; }
-    appendMsg(text, 'user');
-    chatInput.value = ''; chatInput.style.height = 'auto';
-    state.chatHistory.push({ role: 'user', content: text });
-    state.running = true; setStatus('running'); $('gkh-status').classList.add('busy'); chatSend.disabled = true;
-    const typing = appendTyping();
-    try {
-      const persona = PERSONALITY[provider] || '';
-      const reply = await chatDispatch(provider, key, model, state.chatHistory.slice(-20), persona);
-      typing.remove(); appendMsg(reply, 'ai');
-      state.chatHistory.push({ role: 'assistant', content: reply });
-      setStatus('done');
-    } catch (e) {
-      typing.remove(); appendMsg('ERROR: ' + e.message, 'err');
-      setStatus('error');
-    } finally {
-      state.running = false; chatSend.disabled = false; $('gkh-status').classList.remove('busy');
+    const t = CI.value.trim(); if (!t || S.running) return;
+    const intent = parseNum(t);
+    if (intent) {
+      addMsg(t, 'u'); CI.value = ''; CI.style.height = 'auto';
+      addMsg('⚡ Pakai tombol JAWAB SEKARANG di tab Solve biar akurat.', 's');
+      return;
     }
+    const key = $('KY').value.trim(), prov = $('PR').value, model = $('MD').value;
+    if (!key) { addMsg('API key kosong.', 'e'); return; }
+    addMsg(t, 'u'); CI.value = ''; CI.style.height = 'auto';
+    S.chat.push({ role: 'user', content: t });
+    S.running = true; setSt('running'); $('DOT').classList.add('b'); CS.disabled = true;
+    const tp = addTyp();
+    try {
+      const p = S.chat.slice(-20).map(m => (m.role === 'user' ? 'User: ' : 'AI: ') + m.content).join('\n\n');
+      const r = await call(prov, key, model, p, PERSONA[prov] || '', true);
+      tp.remove(); addMsg(r, 'a');
+      S.chat.push({ role: 'assistant', content: r });
+      setSt('done');
+    } catch (e) { tp.remove(); addMsg('ERR: ' + e.message, 'e'); setSt('error'); }
+    finally { S.running = false; CS.disabled = false; $('DOT').classList.remove('b'); }
   }
 
-  document.querySelectorAll('.gkh-chip').forEach((chip) => {
-    chip.onclick = () => { chatInput.value = chip.dataset.p; chatInput.focus(); };
-  });
+  qsa('.ch').forEach(c => c.onclick = () => { CI.value = c.dataset.p; CI.focus(); });
+  $('CC').onclick = () => { S.chat = []; MS.innerHTML = ''; addMsg('Chat cleared.', 'a'); };
 
-  $('gkh-chat-clear').onclick = () => {
-    state.chatHistory = [];
-    chatMsgs.innerHTML = '';
-    appendMsg('Chat dibersihkan.', 'ai');
-  };
-
-  document.addEventListener('keydown', (e) => {
+  // ─── HOTKEY ───
+  document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.shiftKey && e.key === 'G') {
       e.preventDefault();
-      if (state.stealth) { panel.style.display = 'flex'; stealthBtn.classList.remove('active'); state.stealth = false; }
-      else enterStealth();
+      if (S.stealth) { root.style.display = 'flex'; pill.classList.remove('on'); S.stealth = false; }
+      else { S.stealth = true; root.style.display = 'none'; pill.classList.add('on'); }
     }
   });
 
-  $('gkh-provider').value = 'groq';
+  $('PR').value = 'groq';
   updateModels();
-  log('GFS Kahoot Solver v1 by Alip/Alrect. Loaded.', 'ok');
+  log('GKH Compact v2. Loaded.', 'ok');
 })();
