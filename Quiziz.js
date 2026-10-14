@@ -1,4 +1,4 @@
-/* GFS Quizizz Solver PRO v2 — by Alip/Alrect — Accuracy Focus + Audio Skip */
+/* GFS Quizizz Solver PRO v3 — by Alip/Alrect — TF Reasoning + Audio Skip */
 (function () {
   if (window.__GQZ_LOADED__) { document.getElementById('gqz-panel')?.remove(); document.getElementById('gqz-stealth-btn')?.remove(); window.__GQZ_LOADED__ = false; return; }
   window.__GQZ_LOADED__ = true;
@@ -13,10 +13,10 @@
   };
 
   const PERSONALITY = {
-    groq: '[Persona: Academic MCQ Solver expert. Lo ahli bahasa Inggris, sastra, IPA, IPS, matematika, musik, sejarah. Cara kerja: (1) baca soal utuh, (2) identifikasi tipe: reading comprehension / factual recall / vocabulary / math / music title / grammar, (3) untuk reading comprehension panjang — lacak pronoun dan referensi (who is "I", "she", "mother"), cek tense, cek makna tersurat bukan tersirat, (4) pilih opsi PALING DIDUKUNG TEKS/FAKTA, bukan yang paling "kedengaran puitis". Jangan mengarang. Balas JSON only.]',
-    openrouter: '[Persona: Academic MCQ Solver. Fokus akurasi. Untuk reading panjang, teliti pronoun, referensi, makna tersurat. Pilih opsi paling didukung teks.]',
-    cloudflare: '[Persona: MCQ Solver akademik. Pilih jawaban paling didukung teks atau fakta. Balas JSON only.]',
-    openai: '[Persona: Academic MCQ Solver. Prioritaskan akurasi. Untuk reading comprehension, verifikasi setiap opsi terhadap teks sumber. Jangan mengarang.]'
+    groq: '[Persona: Academic MCQ Solver expert. Lo ahli bahasa Inggris, sastra, biologi, fisika, kimia, IPA, IPS, matematika, musik, sejarah, geografi. Kamu TELITI dan HATI-HATI. Untuk soal TRUE/FALSE, baca pernyataan dengan cermat dan nilai berdasarkan FAKTA ILMIAH, bukan asumsi umum. Contoh: "Mata burung unta lebih besar dari otaknya" = TRUE (fakta biologi). "Lalat melompat mundur saat terbang" = TRUE (mekanisme terbang lalat). Jangan asal menjawab. Gunakan pengetahuanmu dengan maksimal.]',
+    openrouter: '[Persona: Academic MCQ + True/False solver. Untuk TF, nilai berdasarkan fakta ilmiah. Teliti pronoun dan referensi pada reading comprehension.]',
+    cloudflare: '[Persona: MCQ + TF solver. Nilai fakta dengan teliti. Balas JSON only.]',
+    openai: '[Persona: Academic solver. Untuk TF, evaluasi kebenaran berdasarkan fakta ilmiah/historis. Prioritaskan akurasi.]'
   };
 
   const state = { running: false, stealth: false, chatHistory: [], autoInterval: null };
@@ -290,7 +290,7 @@
         <div class="gqz-row">
           <div class="gqz-switch-row"><div><div class="gqz-switch-lbl">Auto-Advance</div><div class="gqz-switch-desc">Klik Next setelah jawab</div></div><label class="gqz-toggle"><input type="checkbox" id="gqz-opt-advance"><span class="gqz-slider"></span></label></div>
           <div class="gqz-switch-row"><div><div class="gqz-switch-lbl">Auto-Scroll</div><div class="gqz-switch-desc">Scroll ke jawaban</div></div><label class="gqz-toggle"><input type="checkbox" id="gqz-opt-scroll" checked><span class="gqz-slider"></span></label></div>
-          <div class="gqz-switch-row"><div><div class="gqz-switch-lbl">Auto-Explanation</div><div class="gqz-switch-desc">AI jelasin jawaban (WAJIB ON buat akurasi)</div></div><label class="gqz-toggle"><input type="checkbox" id="gqz-opt-explain" checked><span class="gqz-slider"></span></label></div>
+          <div class="gqz-switch-row"><div><div class="gqz-switch-lbl">Auto-Explanation</div><div class="gqz-switch-desc">AI kasih alasan (WAJIB ON buat akurasi)</div></div><label class="gqz-toggle"><input type="checkbox" id="gqz-opt-explain" checked><span class="gqz-slider"></span></label></div>
           <div class="gqz-switch-row"><div><div class="gqz-switch-lbl">Show Personality</div><div class="gqz-switch-desc">Tampilkan persona AI</div></div><label class="gqz-toggle"><input type="checkbox" id="gqz-opt-persona" checked><span class="gqz-slider"></span></label></div>
         </div>
         <div class="gqz-row-2"><button class="gqz-btn gqz-btn-sec gqz-btn-sm" id="gqz-save">${SVG.download}<span>SAVE</span></button><button class="gqz-btn gqz-btn-sec gqz-btn-sm" id="gqz-load">${SVG.rocket}<span>LOAD</span></button></div>
@@ -314,11 +314,11 @@
               <span style="font-size:14px;font-weight:900">+62 821-9240-1340</span>
             </div>
           </a>
-          <div style="margin-top:16px;font-size:9.5px;color:#475569">GFS Quizizz Solver v2 · © 2026</div>
+          <div style="margin-top:16px;font-size:9.5px;color:#475569">GFS Quizizz Solver v3 · © 2026</div>
         </div>
       </div>
     </div>
-    <div class="gqz-footer"><span>⚡ GQZ v2 · Audio-Skip</span><span class="gqz-badge" id="gqz-footer-stat">idle</span></div>`;
+    <div class="gqz-footer"><span>⚡ GQZ v3 · TF-Reasoning</span><span class="gqz-badge" id="gqz-footer-stat">idle</span></div>`;
   document.body.appendChild(panel);
 
   const $ = (id) => document.getElementById(id);
@@ -453,6 +453,25 @@
     return false;
   };
 
+  // ─── TRUE/FALSE DETECTION ───
+  const TF_REGEX = /^(benar|salah|true|false|b\s*\/\s*s|t\s*\/\s*f|ya|tidak|yes|no)$/i;
+
+  const isTrueFalseQuestion = (q) => {
+    if (q.opts.length !== 2) return false;
+    return q.opts.every(o => TF_REGEX.test(o.text.trim()));
+  };
+
+  // Cari option untuk TRUE / FALSE
+  const findTFOption = (q, wantTrue) => {
+    const truePat = /^(benar|true|ya|yes)$/i;
+    const falsePat = /^(salah|false|tidak|no)$/i;
+    const pat = wantTrue ? truePat : falsePat;
+    for (const o of q.opts) {
+      if (pat.test(o.text.trim())) return o.el;
+    }
+    return null;
+  };
+
   const parseQuizizzQuestion = () => {
     let questionEl = firstOf(QUIZIZZ_QUESTION_SELECTORS);
     let qText = questionEl ? extractText(questionEl) : '';
@@ -520,34 +539,15 @@
     return null;
   };
 
-  const findBlankInput = () => {
-    const sels = [
-      'input[type="text"][class*="answer"]',
-      'textarea[class*="answer"]',
-      'input[type="text"][data-cy*="answer"]',
-      '[class*="fill-blank"] input',
-      '[class*="fillBlank"] input',
-      'input[type="text"]:not([readonly])'
-    ];
-    for (const s of sels) {
-      const els = qsa(s).filter(e => e.offsetParent !== null);
-      if (els.length) return els[0];
-    }
-    return null;
-  };
-
   $('gqz-parse').onclick = () => {
     const all = parseQuizizzAll();
     log('Terdeteksi ' + all.length + ' soal.', 'ok');
-    all.slice(0, 5).forEach((q) => {
-      const tag = q.hasAudio ? '[AUDIO-SKIP]' : '[OK]';
+    all.slice(0, 8).forEach((q) => {
+      const tf = isTrueFalseQuestion(q);
+      const tag = q.hasAudio ? '[AUDIO-SKIP]' : (tf ? '[TRUE/FALSE]' : '[MCQ]');
       log(tag + ' Q' + (q.idx + 1) + ': ' + (q.qText || '(no text)').slice(0, 70), q.hasAudio ? 'warn' : 'info');
       q.opts.slice(0, 6).forEach((o, j) => log('   ' + (j + 1) + '. ' + o.text.slice(0, 70), 'info'));
     });
-    const nextBtn = findNextButton();
-    log('Next button: ' + (nextBtn ? '✓ ada' : '✗ tidak ada'), nextBtn ? 'ok' : 'warn');
-    const blank = findBlankInput();
-    if (blank) log('Input blank terdeteksi: ' + blank.tagName, 'info');
   };
 
   $('gqz-clear').onclick = () => {
@@ -594,10 +594,7 @@
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: 'system', content: persona },
-          { role: 'user', content: prompt }
-        ],
+        messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
         temperature: 0.0,
         max_tokens: 3000
@@ -614,10 +611,7 @@
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: 'system', content: persona },
-          { role: 'user', content: prompt }
-        ],
+        messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
         temperature: 0.0,
         max_tokens: 3000
@@ -632,14 +626,9 @@
     const url = 'https://api.cloudflare.com/client/v4/accounts/' + CF_ACCOUNT_ID + '/ai/run/' + model;
     const res = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: persona },
-          { role: 'user', content: prompt }
-        ]
-      })
+      body: JSON.stringify({ messages: [{ role: 'system', content: persona }, { role: 'user', content: prompt }] })
     });
-    if (!res.ok) throw new Error('Cloudflare ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    if (!res.ok) throw new Error('Cloudflare ' + res.status);
     const data = await res.json();
     if (!data.success) throw new Error('Cloudflare fail');
     let text = data?.result?.response;
@@ -651,7 +640,7 @@
   const chatGroq = async (key, model, messages, persona) => {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Kamu asisten chat cerdas. Jawab natural, ringkas, jelas. Bahasa Indonesia santai.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
+      body: JSON.stringify({ model, messages: [{ role: 'system', content: persona + ' Asisten chat cerdas. Jawab natural, ringkas.' }, ...messages], temperature: 0.6, max_tokens: 2000 })
     });
     if (!res.ok) throw new Error('Groq ' + res.status);
     const data = await res.json();
@@ -711,8 +700,13 @@
     return list.map(x => {
       if (!x) return null;
       const idx = Number.isInteger(x.i) ? x.i : (Number.isInteger(x.idx) ? x.idx : null);
+      if (idx === null) return null;
+      // Support TF format: {i, t: true/false}
+      if (typeof x.t === 'boolean') {
+        return { idx, tf: x.t, answer: x.t ? 'BENAR' : 'SALAH', confidence: 0.9, reason: x.reason || '' };
+      }
       const answer = x.a || x.answer || null;
-      if (idx === null || typeof answer !== 'string') return null;
+      if (typeof answer !== 'string') return null;
       return { idx, answer, confidence: Math.min(1, Math.max(0, Number(x.confidence) || 0.85)), reason: x.reason || x.explanation || '' };
     }).filter(Boolean);
   };
@@ -733,15 +727,7 @@
     if (nStrip !== nRaw) { m = q.opts.find(o => normalize(o.text) === nStrip); if (m) return { el: m.el, reason: 'normal-strip' }; }
     const cands = q.opts.filter(o => { const no = normalize(o.text); return no.length > 0 && nStrip.length >= no.length * 0.5 && (no.includes(nStrip) || nStrip.includes(no)); });
     if (cands.length === 1) return { el: cands[0].el, reason: 'contains-1' };
-    if (cands.length > 1) {
-      cands.sort((a, b) => { const oa = normalize(a.text), ob = normalize(b.text); const sA = oa.includes(nStrip) ? nStrip.length / oa.length : oa.length / nStrip.length; const sB = ob.includes(nStrip) ? nStrip.length / ob.length : ob.length / nStrip.length; return sB - sA; });
-      return { el: cands[0].el, reason: 'contains-best' };
-    }
-    for (const opt of q.opts) {
-      const no = normalize(opt.text);
-      const words = no.split(' ').filter(w => w.length > 3);
-      if (words.length > 0 && words.every(w => nStrip.includes(w))) return { el: opt.el, reason: 'word-match' };
-    }
+    if (cands.length > 1) return { el: cands[0].el, reason: 'contains-best' };
     return { el: null, reason: 'no-match' };
   };
 
@@ -755,7 +741,8 @@
       if (mt.reason === 'no-match') item.style.borderLeftColor = '#ef4444';
       else if (mt.reason && mt.reason.startsWith('contains-best')) item.style.borderLeftColor = '#fbbf24';
       else item.style.borderLeftColor = '#22c55e';
-      item.innerHTML = '<div class="gqz-expl-num">' + SVG.sparkle + ' Q' + (a.idx + 1) + ' · ' + (mt.reason || '') + '</div>' + '<div class="gqz-expl-ans">' + (mt.reason === 'no-match' ? '✗ ' : '✓ ') + a.answer + '</div>' + '<div class="gqz-expl-reason">' + (a.reason || q.qText.slice(0, 150)) + '</div>' + '<div class="gqz-expl-conf">Conf: ' + (a.confidence * 100).toFixed(0) + '%</div>';
+      const ansText = a.tf !== undefined ? (a.tf ? 'BENAR' : 'SALAH') : a.answer;
+      item.innerHTML = '<div class="gqz-expl-num">' + SVG.sparkle + ' Q' + (a.idx + 1) + ' · ' + (mt.reason || '') + '</div>' + '<div class="gqz-expl-ans">' + (mt.reason === 'no-match' ? '✗ ' : '✓ ') + ansText + '</div>' + '<div class="gqz-expl-reason">' + (a.reason || q.qText.slice(0, 150)) + '</div>' + '<div class="gqz-expl-conf">Conf: ' + (a.confidence * 100).toFixed(0) + '%</div>';
       list.appendChild(item);
     });
   };
@@ -769,15 +756,18 @@
     if (!key) { log('API key kosong.', 'err'); return; }
 
     const questions = parseQuizizzAll();
-    if (!questions.length) { log('Nggak ada soal ke-parse! Coba SCAN dulu buat debug.', 'err'); return; }
+    if (!questions.length) { log('Nggak ada soal ke-parse! Coba SCAN dulu.', 'err'); return; }
 
     const audioQ = questions.filter(q => q.hasAudio);
-    if (audioQ.length) {
-      log('⚠ ' + audioQ.length + ' soal AUDIO terdeteksi — akan di-skip: ' + audioQ.map(q => '#' + (q.idx + 1)).join(', '), 'warn');
-    }
+    if (audioQ.length) log('⚠ ' + audioQ.length + ' AUDIO — skip: ' + audioQ.map(q => '#' + (q.idx + 1)).join(', '), 'warn');
 
     const solvable = questions.filter(q => !q.hasAudio);
-    if (!solvable.length) { log('Semua soal audio. Nggak ada yang bisa di-auto-solve.', 'err'); return; }
+    if (!solvable.length) { log('Semua audio. Skip.', 'err'); return; }
+
+    // Split: TF dan MCQ
+    const tfQ = solvable.filter(q => isTrueFalseQuestion(q));
+    const mcqQ = solvable.filter(q => !isTrueFalseQuestion(q));
+    log('TF: ' + tfQ.length + ' · MCQ: ' + mcqQ.length + ' · Audio-skip: ' + audioQ.length, 'info');
 
     state.running = true; setStatus('running'); $('gqz-status').classList.add('busy');
     const btn = $('gqz-solve'); btn.disabled = true; btn.innerHTML = SVG.rocket + '<span>PROCESSING...</span>';
@@ -786,70 +776,100 @@
     const wantExplain = $('gqz-opt-explain').checked;
     const persona = PERSONALITY[provider] || '';
     const bs = BATCH_SIZE[provider] || 3;
-    const totalBatches = Math.ceil(solvable.length / bs);
-
-    log('═══ ' + provider + ' · ' + model + ' ═══', 'ai');
-    log('Solvable: ' + solvable.length + ' / ' + questions.length + ' · ' + totalBatches + ' batch × ' + bs, 'info');
 
     const allAnswers = [];
     const allMatches = {};
+    let totalProcessed = 0;
+    const totalTarget = tfQ.length + mcqQ.length;
 
     try {
-      for (let b = 0; b < totalBatches; b++) {
-        const start = b * bs;
-        const batch = solvable.slice(start, start + bs);
-        log('══ Batch ' + (b + 1) + '/' + totalBatches + ' ══', 'info');
-        const prompt = 'Jawab soal pilihan ganda berikut. Pilih opsi PALING DIDUKUNG TEKS/FAKTA (bukan yang kedengaran paling puitis). Untuk reading comprehension, lacak pronoun dan referensi.\n\nBALAS JSON: {"answers":[{"i":<index>,"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan singkat dalam 1 kalimat>"' : '') + '}]}\n\nSOAL:\n' + batch.map((q) => '[' + q.idx + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
+      // ─── TF HANDLER: batch 1 per call + reasoning ───
+      if (tfQ.length) {
+        log('═══ TRUE/FALSE MODE · ' + tfQ.length + ' soal · 1 per call ═══', 'ai');
+        for (let i = 0; i < tfQ.length; i++) {
+          const q = tfQ[i];
+          const prompt = 'Evaluasi pernyataan berikut. Nilai kebenarannya berdasarkan FAKTA ILMIAH/HISTORIS/UMUM yang valid. Jangan asal.\n\nPernyataan [ID ' + q.idx + ']: "' + q.qText + '"\n\nLangkah berpikir:\n1. Apa fakta yang lo tau tentang topik ini?\n2. Apakah pernyataan ini sesuai fakta?\n3. Simpulkan BENAR atau SALAH.\n\nBalas JSON: {"i":' + q.idx + ',"t":<true|false>,"reason":"<alasan 1-2 kalimat berbasis fakta>"}';
 
-        let raw;
-        try {
-          if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
-          else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
-          else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
-          else raw = await callOpenAI(key, model, prompt, persona);
-          log('Batch ' + (b + 1) + ' OK', 'ok');
-        } catch (e) { log('Batch ' + (b + 1) + ' gagal: ' + e.message, 'err'); await sleep(1500); continue; }
+          let raw;
+          try {
+            if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
+            else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
+            else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
+            else raw = await callOpenAI(key, model, prompt, persona);
+          } catch (e) { log('TF Q' + q.idx + ' error: ' + e.message, 'err'); continue; }
 
-        try {
-          const answers = parseResponse(raw);
-          answers.forEach(a => allAnswers.push(a));
-          log('Batch ' + (b + 1) + ' → ' + answers.length + ' jawaban', 'ok');
-        } catch (e) { log('Parse gagal: ' + e.message, 'warn'); }
-        await sleep(700);
+          try {
+            const answers = parseResponse(raw);
+            answers.forEach(a => { if (a.tf !== undefined) allAnswers.push(a); });
+            log('TF Q' + q.idx + ' → ' + (answers[0]?.tf ? 'BENAR' : 'SALAH') + ' (' + (answers[0]?.reason || '').slice(0, 60) + ')', 'ok');
+          } catch (e) { log('TF Q' + q.idx + ' parse fail', 'warn'); }
+          totalProcessed++;
+          $('gqz-progress-fill').style.width = Math.round((totalProcessed / totalTarget) * 100) + '%';
+          await sleep(400);
+        }
       }
 
+      // ─── MCQ HANDLER: batch ───
+      if (mcqQ.length) {
+        const totalBatches = Math.ceil(mcqQ.length / bs);
+        log('═══ MCQ MODE · ' + mcqQ.length + ' soal · ' + totalBatches + ' batch × ' + bs + ' ═══', 'ai');
+        for (let b = 0; b < totalBatches; b++) {
+          const start = b * bs;
+          const batch = mcqQ.slice(start, start + bs);
+          const prompt = 'Jawab soal pilihan ganda berikut. Pilih opsi PALING DIDUKUNG TEKS/FAKTA.\n\nBALAS JSON: {"answers":[{"i":<index>,"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan 1 kalimat>"' : '') + '}]}\n\nSOAL:\n' + batch.map((q) => '[' + q.idx + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
+
+          let raw;
+          try {
+            if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
+            else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
+            else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
+            else raw = await callOpenAI(key, model, prompt, persona);
+          } catch (e) { log('MCQ Batch ' + (b + 1) + ' gagal: ' + e.message, 'err'); await sleep(1500); continue; }
+
+          try {
+            const answers = parseResponse(raw);
+            answers.forEach(a => { if (a.tf === undefined) allAnswers.push(a); });
+            log('MCQ Batch ' + (b + 1) + ' → ' + answers.length, 'ok');
+          } catch (e) { log('Parse gagal batch ' + (b + 1), 'warn'); }
+          totalProcessed += batch.length;
+          $('gqz-progress-fill').style.width = Math.round((totalProcessed / totalTarget) * 100) + '%';
+          await sleep(700);
+        }
+      }
+
+      // ─── CLICK LOOP ───
       let clicked = 0, skipped = 0;
-      for (let i = 0; i < allAnswers.length; i++) {
-        const a = allAnswers[i];
-        $('gqz-progress-fill').style.width = Math.round(((i + 1) / allAnswers.length) * 100) + '%';
+      for (const a of allAnswers) {
         const q = questions[a.idx]; if (!q) continue;
-        const mt = findOption(q, a.answer);
+
+        let mt;
+        if (a.tf !== undefined) {
+          // TF: langsung cari opsi true/false
+          const el = findTFOption(q, a.tf);
+          mt = el ? { el, reason: a.tf ? 'tf-true' : 'tf-false' } : { el: null, reason: 'no-match-tf' };
+        } else {
+          mt = findOption(q, a.answer);
+        }
         allMatches[a.idx] = mt;
-        log('Q' + a.idx + ' → "' + a.answer.slice(0, 40) + '" · ' + mt.reason, 'info');
+
         if (mt.el) {
           if ($('gqz-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          await sleep(150); mt.el.click(); clicked++; log('  ✓', 'ok');
-        } else { skipped++; log('  ✗', 'err'); }
-        await sleep(200);
+          await sleep(150); mt.el.click(); clicked++; log('Q' + a.idx + ' ✓ ' + (a.tf !== undefined ? (a.tf ? 'BENAR' : 'SALAH') : a.answer.slice(0, 40)), 'ok');
+        } else { skipped++; log('Q' + a.idx + ' ✗ no-match', 'err'); }
+        await sleep(180);
       }
 
       if ($('gqz-opt-advance').checked) {
         const nb = findNextButton();
-        if (nb) {
-          log('Auto-advance: klik Next', 'info');
-          await sleep(500);
-          nb.click();
-        } else {
-          log('Next button tidak ditemukan', 'warn');
-        }
+        if (nb) { await sleep(500); nb.click(); log('Auto-advance: klik Next', 'info'); }
       }
 
       renderExplanations(allAnswers, questions, allMatches);
       $('gqz-score').classList.add('active');
       $('gqz-score-v').textContent = clicked + '/' + solvable.length;
-      $('gqz-score-d').textContent = 'Provider: ' + provider + ' · Terisi: ' + clicked + ' · Skip: ' + skipped + ' · Audio-skipped: ' + audioQ.length;
+      $('gqz-score-d').textContent = 'Provider: ' + provider + ' · TF: ' + tfQ.length + ' · MCQ: ' + mcqQ.length + ' · Audio: ' + audioQ.length + ' · Skip: ' + skipped;
       setStatus('done');
-      log('═══ SELESAI: ' + clicked + '/' + solvable.length + ' (audio: ' + audioQ.length + ' skip) ═══', 'ok');
+      log('═══ SELESAI: ' + clicked + '/' + solvable.length + ' ═══', 'ok');
     } catch (e) { log('ERROR: ' + e.message, 'err'); setStatus('error'); }
     finally {
       btn.disabled = false; btn.innerHTML = SVG.rocket + '<span>JAWAB SOAL SEKARANG</span>';
@@ -860,7 +880,7 @@
 
   $('gqz-solve').onclick = doSolveAll;
 
-  // ─── CHAT + NUMBER INTENT ───
+  // ─── CHAT ───
   const chatMsgs = $('gqz-chat-msgs');
   const chatInput = $('gqz-chat-input');
   const chatSend = $('gqz-chat-send');
@@ -905,120 +925,41 @@
   };
 
   async function solveRange(start, end) {
-    const key = $('gqz-key').value.trim();
-    const provider = $('gqz-provider').value;
-    const model = $('gqz-model').value;
-    if (!key) { appendMsg('API key kosong. Isi di tab Config.', 'err'); return; }
-
+    // Simplify: delegate ke doSolveAll kalau full range, else skip (v3 fokus single soal untuk akurasi)
     const allQ = parseQuizizzAll();
-    if (!allQ.length) { appendMsg('Nggak ada soal ke-parse.', 'err'); return; }
-
+    if (!allQ.length) { appendMsg('Nggak ada soal.', 'err'); return; }
     const realEnd = end === Infinity ? allQ.length : Math.min(end, allQ.length);
-    if (start > allQ.length) { appendMsg('Nomor ' + start + ' di luar range. Total: ' + allQ.length, 'err'); return; }
-
-    const targets = allQ.slice(start - 1, realEnd);
-    const audioInRange = targets.filter(q => q.hasAudio);
-    const solvable = targets.filter(q => !q.hasAudio);
-
-    if (!solvable.length) { appendMsg('Semua nomor ' + start + '–' + realEnd + ' soal audio. Skip semua.', 'err'); return; }
-
-    if (audioInRange.length) appendMsg('⚠ ' + audioInRange.length + ' soal audio di range — auto-skip: ' + audioInRange.map(q => '#' + (q.idx + 1)).join(', '), 'sys');
-
-    appendMsg('⚡ Auto-solve nomor ' + start + '–' + realEnd + ' · ' + solvable.length + ' soal solvable', 'sys');
-    const typing = appendTyping();
-    state.running = true; setStatus('running'); $('gqz-status').classList.add('busy'); chatSend.disabled = true;
-    log('⚡ Range solve ' + start + '-' + realEnd + ' · audio-skip: ' + audioInRange.length, 'ai');
-
-    try {
-      const persona = PERSONALITY[provider] || '';
-      const wantExplain = $('gqz-opt-explain').checked;
-      const bs = BATCH_SIZE[provider] || 3;
-      const totalBatches = Math.ceil(solvable.length / bs);
-      const allAnswers = [];
-      const allMatches = {};
-
-      for (let b = 0; b < totalBatches; b++) {
-        const s = b * bs;
-        const batch = solvable.slice(s, s + bs);
-        const prompt = 'Jawab soal pilihan ganda berikut. Pilih opsi PALING DIDUKUNG TEKS/FAKTA. Untuk reading, lacak pronoun dan referensi.\n\nBALAS JSON: {"answers":[{"i":<index>,"a":"<teks opsi PERSIS>"' + (wantExplain ? ',"reason":"<alasan 1 kalimat>"' : '') + '}]}\n\nSOAL:\n' + batch.map((q) => '[' + q.idx + '] ' + q.qText + '\n' + q.opts.map(o => '- ' + o.text).join('\n')).join('\n\n');
-
-        let raw;
-        if (provider === 'groq') raw = await callGroq(key, model, prompt, persona);
-        else if (provider === 'cloudflare') raw = await callCloudflare(key, model, prompt, persona);
-        else if (provider === 'openrouter') raw = await callOpenRouter(key, model, prompt, persona);
-        else raw = await callOpenAI(key, model, prompt, persona);
-
-        try {
-          const answers = parseResponse(raw);
-          answers.forEach(a => allAnswers.push(a));
-          log('Batch ' + (b + 1) + ' → ' + answers.length, 'ok');
-        } catch (e) { log('Parse gagal batch ' + (b + 1), 'warn'); }
-        await sleep(500);
-      }
-
-      let clicked = 0, skipped = 0;
-      for (const a of allAnswers) {
-        const q = allQ[a.idx]; if (!q) continue;
-        const mt = findOption(q, a.answer);
-        allMatches[a.idx] = mt;
-        if (mt.el) {
-          if ($('gqz-opt-scroll').checked) mt.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          await sleep(120); mt.el.click(); clicked++;
-        } else skipped++;
-        await sleep(180);
-      }
-
-      renderExplanations(allAnswers, allQ, allMatches);
-      typing.remove();
-      appendMsg('✓ Nomor ' + start + '–' + realEnd + ' · Terisi: ' + clicked + '/' + solvable.length + ' · Skip: ' + skipped + ' · Audio: ' + audioInRange.length, 'ai');
-      log('Range solve selesai: ' + clicked + '/' + solvable.length, 'ok');
-      setStatus('done');
-    } catch (e) {
-      typing.remove();
-      appendMsg('ERROR: ' + e.message, 'err');
-      log('Range error: ' + e.message, 'err');
-      setStatus('error');
-    } finally {
-      state.running = false; chatSend.disabled = false; $('gqz-status').classList.remove('busy');
-    }
+    if (start === 1 && realEnd === allQ.length) { appendMsg('Range full → pakai Solve All button buat akurasi max', 'sys'); return; }
+    appendMsg('v3 fokus akurasi per-soal. Pakai tombol JAWAB SOAL SEKARANG di tab Solve.', 'sys');
   }
 
   async function doChat() {
     const text = chatInput.value.trim();
     if (!text || state.running) return;
-
     const intent = parseNumberIntent(text);
     if (intent) {
       appendMsg(text, 'user');
       chatInput.value = ''; chatInput.style.height = 'auto';
-      log('Intent: nomor ' + intent.start + ' → ' + (intent.end === Infinity ? 'akhir' : intent.end), 'ai');
       await solveRange(intent.start, intent.end);
       return;
     }
-
     const key = $('gqz-key').value.trim();
     const provider = $('gqz-provider').value;
     const model = $('gqz-model').value;
     if (!key) { appendMsg('API key kosong.', 'err'); return; }
-
     appendMsg(text, 'user');
     chatInput.value = ''; chatInput.style.height = 'auto';
     state.chatHistory.push({ role: 'user', content: text });
-
     state.running = true; setStatus('running'); $('gqz-status').classList.add('busy'); chatSend.disabled = true;
     const typing = appendTyping();
-
     try {
       const persona = PERSONALITY[provider] || '';
       const reply = await chatDispatch(provider, key, model, state.chatHistory.slice(-20), persona);
-      typing.remove();
-      appendMsg(reply, 'ai');
+      typing.remove(); appendMsg(reply, 'ai');
       state.chatHistory.push({ role: 'assistant', content: reply });
       setStatus('done');
     } catch (e) {
-      typing.remove();
-      appendMsg('ERROR: ' + e.message, 'err');
-      log('Chat error: ' + e.message, 'err');
+      typing.remove(); appendMsg('ERROR: ' + e.message, 'err');
       setStatus('error');
     } finally {
       state.running = false; chatSend.disabled = false; $('gqz-status').classList.remove('busy');
@@ -1033,7 +974,6 @@
     state.chatHistory = [];
     chatMsgs.innerHTML = '';
     appendMsg('Chat dibersihkan.', 'ai');
-    log('Chat history cleared.', 'warn');
   };
 
   document.addEventListener('keydown', (e) => {
@@ -1046,5 +986,5 @@
 
   $('gqz-provider').value = 'groq';
   updateModels();
-  log('GFS Quizizz Solver v2 by Alip/Alrect. Accuracy Focus + Audio Skip.', 'ok');
+  log('GFS Quizizz Solver v3 by Alip/Alrect. TF-Reasoning + Audio Skip.', 'ok');
 })();
