@@ -1,4 +1,4 @@
-/* CBT Solver PRO v1 — by Alip/Alrect — Auto-Answer from embedded data */
+/* CBT Solver PRO v2 — Fixed Timing + Let-Scope Detect */
 (function () {
   if (window.__CBT_LOADED__) { document.getElementById('cbt-root')?.remove(); document.getElementById('cbt-pill')?.remove(); window.__CBT_LOADED__ = false; return; }
   window.__CBT_LOADED__ = true;
@@ -18,7 +18,7 @@
     cloudflare: ['@cf/meta/llama-3.3-70b-instruct-fp8-fast'],
     xylo: ['deepseek-r1']
   };
-  const S = { running: false, stealth: false, auto: false, log: [] };
+  const S = { running: false, stealth: false, cache: null };
 
   const I = {
     bolt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="square"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
@@ -33,14 +33,15 @@
     heart: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>',
     user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>',
     wa: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>',
-    spark: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5.8 1.9L12 17.4l-2.2-5.8L4 9.7l6.1-1.9L12 2z"/></svg>'
+    spark: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.8L20 9.7l-5.8 1.9L12 17.4l-2.2-5.8L4 9.7l6.1-1.9L12 2z"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>'
   };
 
   const css = `
   #cbt-root, #cbt-root *, #cbt-pill { box-sizing: border-box !important; }
   #cbt-root, #cbt-root * { animation: none !important; transition: none !important; }
-  #cbt-root{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;max-width:94vw;max-height:90vh;background:#1c0808;color:#fdf0f0;border:3px solid #000;box-shadow:8px 8px 0 0 #000,8px 8px 0 3px #ff2b2b,inset 0 0 0 1px #4a1010;font:12px/1.4 'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;display:flex;flex-direction:column;z-index:2147483647;overflow:hidden;letter-spacing:.1px}
-  #cbt-root.mini{width:170px !important;max-height:46px !important;overflow:hidden}
+  #cbt-root{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;max-width:94vw;max-height:90vh;background:#1c0808;color:#fdf0f0;border:3px solid #000;box-shadow:8px 8px 0 0 #000,8px 8px 0 3px #ff2b2b,inset 0 0 0 1px #4a1010;font:12px/1.4 'Segoe UI',system-ui,-apple-system,Roboto,sans-serif;display:flex;flex-direction:column;z-index:2147483647;overflow:hidden;letter-spacing:.1px}
+  #cbt-root.mini{width:180px !important;max-height:48px !important;overflow:hidden}
   #cbt-root.mini .cbt-body,#cbt-root.mini .cbt-ft{display:none !important}
   .cbt-h{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:#ff2b2b;border-bottom:3px solid #000;flex-shrink:0;color:#fff}
   .cbt-h-l{display:flex;align-items:center;gap:8px}
@@ -59,7 +60,6 @@
   .cbt-tab svg{width:16px;height:16px}
   .cbt-tab:hover{color:#fdf0f0;background:#3a1414}
   .cbt-tab.on{background:#ff2b2b;color:#fff;border-left-color:#ffcc00;text-shadow:1px 1px 0 #000}
-  .cbt-tab.on svg{color:#fff}
   .cbt-content{flex:1;overflow-y:auto;padding:10px;min-width:0;background:#180808}
   .cbt-content::-webkit-scrollbar{width:7px}
   .cbt-content::-webkit-scrollbar-thumb{background:#ff2b2b;border:1px solid #000}
@@ -123,7 +123,6 @@
   .cbt-exl::-webkit-scrollbar-thumb{background:#ff2b2b;border:1px solid #000}
   .cbt-ex{padding:8px;margin-bottom:6px;background:#260c0c;border:2px solid #000;border-left:5px solid #4ade80;box-shadow:2px 2px 0 #000}
   .cbt-ex.err{border-left-color:#ff2b2b}
-  .cbt-ex.wrn{border-left-color:#ffcc00}
   .cbt-ex-t{font-size:8.5px;color:#ffcc00;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;display:flex;align-items:center;gap:3px}
   .cbt-ex-t svg{width:10px;height:10px}
   .cbt-ex-a{font-size:11.5px;color:#4ade80;font-weight:800;margin-bottom:3px;text-shadow:1px 1px 0 #000}
@@ -165,7 +164,7 @@
 
   const load = document.createElement('div');
   load.id = 'cbt-load';
-  load.innerHTML = '<div id="cbt-load-in"><div id="cbt-load-logo">CBT</div><div id="cbt-load-sub">SOLVER · V1</div><div id="cbt-load-bar"><div id="cbt-load-fill"></div></div><div id="cbt-load-pct">0%</div></div>';
+  load.innerHTML = '<div id="cbt-load-in"><div id="cbt-load-logo">CBT</div><div id="cbt-load-sub">SOLVER · V2</div><div id="cbt-load-bar"><div id="cbt-load-fill"></div></div><div id="cbt-load-pct">0%</div></div>';
   document.body.appendChild(load);
   let pct = 0;
   const fillEl = document.getElementById('cbt-load-fill');
@@ -191,7 +190,7 @@
   <div class="cbt-h" id="CBTH">
     <div class="cbt-h-l">
       <div class="cbt-h-logo">${I.bolt}</div>
-      <span class="cbt-h-title">CBT Solver</span>
+      <span class="cbt-h-title">CBT Solver v2</span>
       <span class="cbt-h-dot" id="DOT"></span>
     </div>
     <div class="cbt-h-r">
@@ -210,13 +209,13 @@
     </div>
     <div class="cbt-content" id="CT">
       <div class="cbt-p on" data-p="solve">
-        <div class="cbt-tip" id="TIP">${I.spark}<span id="TIPTEXT">Detecting...</span></div>
+        <div class="cbt-tip">${I.spark}<span id="TIPTEXT">Detecting...</span></div>
         <button class="cbt-btn red" id="GO">${I.play}<span>Jawab Semua</span></button>
         <button class="cbt-btn grn" id="GOFINISH">${I.bolt}<span>Jawab + Selesai</span></button>
         <div class="cbt-g3 mb8">
           <button class="cbt-btn wht sm" id="SC">${I.scan}<span>Scan</span></button>
-          <button class="cbt-btn yel sm" id="AI">${I.bolt}<span>AI Fallback</span></button>
-          <button class="cbt-btn dar sm" id="RS">${I.x}<span>Clear</span></button>
+          <button class="cbt-btn yel sm" id="AI">${I.bolt}<span>AI</span></button>
+          <button class="cbt-btn dar sm" id="RS">${I.x}<span>Reset</span></button>
         </div>
         <div class="cbt-sc" id="SCD">
           <div class="cbt-sc-t">${I.spark}<span>Hasil</span></div>
@@ -228,13 +227,13 @@
         <div class="cbt-exl" id="EX"><div style="color:#a86a6a;font-size:10px;text-align:center;padding:20px;font-weight:700">BELUM ADA DATA</div></div>
       </div>
       <div class="cbt-p" data-p="settings">
-        <div class="mb8"><div class="cbt-lbl">${I.spark}<span>AI Fallback</span></div><select class="cbt-sel" id="PR"><option value="groq">Groq</option><option value="cloudflare">Cloudflare</option><option value="xylo">XyloAPI</option><option value="openrouter">OpenRouter</option></select></div>
+        <div class="mb8"><div class="cbt-lbl">${I.spark}<span>AI Fallback Provider</span></div><select class="cbt-sel" id="PR"><option value="groq">Groq</option><option value="cloudflare">Cloudflare</option><option value="xylo">XyloAPI</option><option value="openrouter">OpenRouter</option></select></div>
         <div class="mb8"><div class="cbt-lbl">${I.code}<span>Model</span></div><select class="cbt-sel" id="MD"></select></div>
-        <div class="mb8" id="KEYROW"><div class="cbt-lbl">${I.bolt}<span>API Key</span></div><div class="cbt-iw"><input class="cbt-inp" id="KY" type="password"><button class="cbt-iey" id="EY">${I.eye || I.bolt}</button></div></div>
+        <div class="mb8" id="KEYROW"><div class="cbt-lbl">${I.bolt}<span>API Key</span></div><div class="cbt-iw"><input class="cbt-inp" id="KY" type="password"><button class="cbt-iey" id="EY">${I.eye}</button></div></div>
         <div class="mb8">
-          <div class="cbt-sw"><div><div class="cbt-sw-t">Auto Submit</div><div class="cbt-sw-d">Kirim otomatis setelah isi</div></div><label class="cbt-tg"><input type="checkbox" id="AS"><span class="cbt-ts"></span></label></div>
+          <div class="cbt-sw"><div><div class="cbt-sw-t">Auto Submit</div><div class="cbt-sw-d">Finish otomatis setelah isi</div></div><label class="cbt-tg"><input type="checkbox" id="AS"><span class="cbt-ts"></span></label></div>
           <div class="cbt-sw"><div><div class="cbt-sw-t">Auto Minimize</div><div class="cbt-sw-d">Panel kecil saat proses</div></div><label class="cbt-tg"><input type="checkbox" id="AM" checked><span class="cbt-ts"></span></label></div>
-          <div class="cbt-sw"><div><div class="cbt-sw-t">Fast Mode</div><div class="cbt-sw-d">Delay antar soal 100ms</div></div><label class="cbt-tg"><input type="checkbox" id="FM" checked><span class="cbt-ts"></span></label></div>
+          <div class="cbt-sw"><div><div class="cbt-sw-t">Verbose Log</div><div class="cbt-sw-d">Log detail per soal</div></div><label class="cbt-tg"><input type="checkbox" id="VB" checked><span class="cbt-ts"></span></label></div>
         </div>
       </div>
       <div class="cbt-p" data-p="log">
@@ -247,21 +246,21 @@
           <div class="cbt-cr-n">Alip / Alrect</div>
           <div class="cbt-cr-r">Developer</div>
           <a class="cbt-cr-w" href="https://wa.me/6282192401340" target="_blank">${I.wa}<div class="cbt-cr-w-t"><span class="cbt-cr-w-l">Order Now</span><span class="cbt-cr-w-n">+62 821-9240-1340</span></div></a>
-          <div class="cbt-cr-f">CBT SOLVER v1 · 2026</div>
+          <div class="cbt-cr-f">CBT SOLVER v2 · 2026</div>
         </div>
       </div>
     </div>
   </div>
-  <div class="cbt-ft"><span>⚡ v1</span><span class="cbt-bg" id="FST">idle</span></div>`;
+  <div class="cbt-ft"><span>⚡ v2</span><span class="cbt-bg" id="FST">idle</span></div>`;
   document.body.appendChild(root);
 
   function boot() {
     root.style.display = 'flex';
     initHandlers();
-    log('CBT Solver v1 loaded.', 'ok');
+    log('CBT Solver v2 loaded.', 'ok');
     const q = detectQuestions();
     if (q) log('✓ ' + q.length + ' soal terdeteksi', 'ai');
-    else log('✗ Nggak ada soal. Buka halaman ujian dulu.', 'er');
+    else log('✗ Buka halaman ujian dulu.', 'er');
   }
 
   const $ = id => document.getElementById(id);
@@ -278,32 +277,36 @@
   const setSt = t => { const b = $('FST'); if (!b) return; b.textContent = t; b.className = 'cbt-bg'; if (t === 'running') b.classList.add('run'); else if (t === 'error') b.classList.add('er'); else if (t === 'done') b.classList.add('dn'); };
 
   // ═══════════════════════════════════════════
-  // DETECT QUESTIONS (from window.questions)
+  // DETECT QUESTIONS — inject script to read let-scoped var
   // ═══════════════════════════════════════════
   function detectQuestions() {
+    if (S.cache && S.cache.length) return S.cache;
     try {
-      // Primary: global `questions` variable
-      if (window.questions && Array.isArray(window.questions) && window.questions.length > 0) return window.questions;
-      // Fallback: search window for any array with is_correct
-      for (const k in window) {
-        try {
-          const v = window[k];
-          if (Array.isArray(v) && v.length > 0 && v[0] && v[0].jawaban && Array.isArray(v[0].jawaban)) {
-            if (v[0].jawaban[0] && 'is_correct' in v[0].jawaban[0]) return v;
-          }
-        } catch {}
-      }
-      // Fallback: parse from script tag
+      // Method 1: read `questions` via injected script (handles let-scope)
+      const id = '_cbt_probe_' + Date.now();
+      const s = document.createElement('script');
+      s.textContent = `(function(){ try { if (typeof questions !== 'undefined' && Array.isArray(questions)) { window["${id}"] = questions; } else { window["${id}"] = null; } } catch(e) { window["${id}"] = null; } })();`;
+      document.body.appendChild(s);
+      s.remove();
+      const q = window[id];
+      try { delete window[id]; } catch {}
+      if (q && q.length) { S.cache = q; return q; }
+    } catch (e) { log('inject fail: ' + e.message, 'er'); }
+
+    // Method 2: regex from script tag (long shot)
+    try {
       const scripts = qsa('script');
-      for (const s of scripts) {
-        const t = s.textContent || '';
-        const m = t.match(/questions\s*=\s*(\[[\s\S]*?\]);/);
+      for (const sc of scripts) {
+        const t = sc.textContent || '';
+        if (!t.includes('"is_correct"') && !t.includes("'is_correct'")) continue;
+        // find first `questions` assignment
+        const m = t.match(/(?:let|var|const)\s+questions\s*=\s*(\[[\s\S]*?\]);/);
         if (m) {
-          try { return JSON.parse(m[1]); } catch {}
+          try { const parsed = JSON.parse(m[1]); if (parsed.length) { S.cache = parsed; return parsed; } } catch {}
         }
       }
-      return null;
-    } catch { return null; }
+    } catch {}
+    return null;
   }
 
   function findCorrectOpt(q) {
@@ -318,96 +321,125 @@
   // ═══════════════════════════════════════════
   // CLICK SIMULATOR
   // ═══════════════════════════════════════════
-  function simulateClick(el) {
-    if (!el) return false;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-    let hit = null;
-    try { hit = document.elementFromPoint(cx, cy); } catch {}
-    const targets = new Set([el]);
-    if (hit && hit !== el) targets.add(hit);
-    const closeBtn = el.closest('label, button, [role="button"]');
-    if (closeBtn) targets.add(closeBtn);
-    const mk = (type, Ctor) => { try { return new Ctor(type, { bubbles: true, cancelable: true, composed: true, view: window, clientX: cx, clientY: cy, button: 0, buttons: 1 }); } catch { return null; } };
-    for (const t of targets) {
-      if (!t || !t.dispatchEvent) continue;
-      try { t.click(); } catch {}
-      try { const ev = mk('change', Event); if (ev) t.dispatchEvent(ev); } catch {}
-      try { const ev = mk('input', Event); if (ev) t.dispatchEvent(ev); } catch {}
-      try { const ev = mk('mousedown', MouseEvent); if (ev) t.dispatchEvent(ev); } catch {}
-      try { const ev = mk('mouseup', MouseEvent); if (ev) t.dispatchEvent(ev); } catch {}
-    }
-    return true;
+  function clickRadio(radio) {
+    if (!radio) return false;
+    try {
+      radio.checked = true;
+      radio.click();
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+      radio.dispatchEvent(new Event('input', { bubbles: true }));
+      radio.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      return radio.checked === true;
+    } catch { return false; }
   }
 
   // ═══════════════════════════════════════════
-  // SOLVE ALL — read from embedded data
+  // SOLVE — with proper timing
   // ═══════════════════════════════════════════
   async function solveAll(autoFinish = false) {
     if (S.running) return;
     const Q = detectQuestions();
-    if (!Q || !Q.length) { log('Nggak ada soal. Detect dulu.', 'er'); return; }
+    if (!Q || !Q.length) { log('Nggak ada soal.', 'er'); return; }
 
     S.running = true; setSt('running'); $('DOT').classList.add('run');
-    const useAM = $('AM').checked, fast = $('FM').checked;
-    if (useAM) { root.classList.add('mini'); await sleep(80); }
+    const useAM = $('AM').checked, verbose = $('VB').checked;
+    if (useAM) { root.classList.add('mini'); await sleep(100); }
+
+    // Timing: updateDisplay has setTimeout(150) → render + 150ms fade → need >300ms
+    const NAV_WAIT = 400;   // wait after goToQuestion
+    const CLICK_WAIT = 150; // wait after click
+    const INTER_WAIT = 100; // between questions
 
     log('═══ Auto-answer ' + Q.length + ' soal ═══', 'ai');
+    log('Timing: nav=' + NAV_WAIT + 'ms click=' + CLICK_WAIT + 'ms', 'in');
+
     let filled = 0, skipped = 0;
-    const delay = fast ? 100 : 300;
     const exData = [];
 
     try {
       for (let i = 0; i < Q.length; i++) {
         const q = Q[i];
         const correct = findCorrectOpt(q);
-        if (!correct) { skipped++; log('Q' + (i + 1) + ' ✗ no is_correct', 'er'); continue; }
+        if (!correct) { skipped++; if (verbose) log('Q' + (i + 1) + ' ✗ no is_correct', 'er'); continue; }
 
-        // Navigate to question (function goToQuestion exists in page)
+        // 1. Navigate via page's own function
         if (typeof window.goToQuestion === 'function') {
           window.goToQuestion(i);
         } else {
-          const nav = document.querySelectorAll('#questionNav button');
-          if (nav[i]) nav[i].click();
+          const navBtns = qsa('#questionNav button');
+          if (navBtns[i]) navBtns[i].click();
         }
-        await sleep(delay);
+        await sleep(NAV_WAIT);
 
-        // Find the radio for this option
+        // 2. Find current question rendered in DOM (verify mismatch)
+        const curNumEl = document.getElementById('currentQuestionNum');
+        const curNum = curNumEl ? parseInt(curNumEl.textContent, 10) : -1;
+        if (curNum !== i + 1) {
+          if (verbose) log('Q' + (i + 1) + ' ⚠ DOM index mismatch (cur=' + curNum + ')', 'wn');
+          // Wait more
+          await sleep(300);
+        }
+
+        // 3. Find radios
         const radios = qsa('#optionsContainer input[type="radio"]');
         const labels = qsa('#optionsContainer label');
-        if (radios.length !== q.jawaban.length) {
-          log('Q' + (i + 1) + ' ⚠ jumlah opsi mismatch: ' + radios.length + ' vs ' + q.jawaban.length, 'wn');
+        if (!radios.length) {
+          skipped++;
+          if (verbose) log('Q' + (i + 1) + ' ✗ no radios found', 'er');
+          continue;
         }
-        const idx = q.jawaban.indexOf(correct);
-        if (idx >= 0 && radios[idx]) {
-          simulateClick(radios[idx]);
-          // Also click label for good measure
-          if (labels[idx]) simulateClick(labels[idx]);
-          await sleep(60);
-          // Fire change event
-          try {
-            radios[idx].dispatchEvent(new Event('change', { bubbles: true }));
-            radios[idx].dispatchEvent(new Event('input', { bubbles: true }));
-          } catch {}
+
+        // 4. Find correct option's index in q.jawaban, then match by id
+        const correctId = correct.id_jawaban_soal;
+        let targetIdx = -1;
+        for (let k = 0; k < q.jawaban.length; k++) {
+          if (String(q.jawaban[k].id_jawaban_soal) === String(correctId)) { targetIdx = k; break; }
+        }
+        if (targetIdx < 0 || !radios[targetIdx]) {
+          skipped++;
+          if (verbose) log('Q' + (i + 1) + ' ✗ radio idx not found (' + targetIdx + ')', 'er');
+          continue;
+        }
+
+        // 5. Click — try radio then label
+        const ok = clickRadio(radios[targetIdx]);
+        await sleep(50);
+        if (!ok && labels[targetIdx]) {
+          try { labels[targetIdx].click(); } catch {}
+          await sleep(50);
+        }
+        await sleep(CLICK_WAIT);
+
+        // 6. Verify
+        if (radios[targetIdx].checked) {
           filled++;
           exData.push({ idx: i + 1, answer: correct.jawaban, q: q.soal });
-          log('Q' + (i + 1) + ' ✓ → ' + correct.jawaban.slice(0, 60), 'ok');
+          if (verbose) log('Q' + (i + 1) + ' ✓ → ' + correct.jawaban.slice(0, 55), 'ok');
         } else {
-          skipped++;
-          log('Q' + (i + 1) + ' ✗ radio not found (idx=' + idx + ')', 'er');
+          // Retry once
+          try { radios[targetIdx].checked = true; radios[targetIdx].dispatchEvent(new Event('change', { bubbles: true })); } catch {}
+          await sleep(80);
+          if (radios[targetIdx].checked) {
+            filled++;
+            exData.push({ idx: i + 1, answer: correct.jawaban, q: q.soal });
+            if (verbose) log('Q' + (i + 1) + ' ✓ (retry)', 'ok');
+          } else {
+            skipped++;
+            if (verbose) log('Q' + (i + 1) + ' ✗ verify fail', 'er');
+          }
         }
+        await sleep(INTER_WAIT);
       }
 
-      // Update result
       $('SCD').classList.add('on');
       $('SCV').textContent = filled + '/' + Q.length;
       $('SCDD').textContent = 'Skipped: ' + skipped + ' · AutoFinish: ' + (autoFinish ? 'ON' : 'OFF');
       renderExplain(exData);
 
-      // Auto finish
       if (autoFinish) {
+        log('→ Tunggu backend save 1.5s...', 'ai');
+        await sleep(1500);
         log('→ Auto-submit...', 'ai');
-        await sleep(800);
         if (typeof window.finishExam === 'function') {
           window.finishExam();
           log('✓ finishExam() called', 'ok');
@@ -424,42 +456,36 @@
       setSt('error');
     } finally {
       S.running = false; $('DOT').classList.remove('run');
-      if (useAM) setTimeout(() => root.classList.remove('mini'), 400);
+      if (useAM) setTimeout(() => root.classList.remove('mini'), 500);
     }
   }
 
   // ═══════════════════════════════════════════
-  // AI FALLBACK — for cases where is_correct missing
+  // AI FALLBACK
   // ═══════════════════════════════════════════
   async function aiFallback() {
     if (S.running) return;
     const Q = detectQuestions();
     if (!Q || !Q.length) { log('Nggak ada soal.', 'er'); return; }
     const needsAI = Q.filter(q => !findCorrectOpt(q));
-    if (!needsAI.length) { log('Semua soal udah ada jawaban. AI nggak perlu.', 'ok'); return; }
-
+    if (!needsAI.length) { log('Semua soal udah ada jawaban.', 'ok'); return; }
     const prov = $('PR').value, key = $('KY').value.trim();
     if (prov !== 'xylo' && !key) { log('API key kosong.', 'er'); return; }
 
     S.running = true; setSt('running'); $('DOT').classList.add('run');
-    log('═══ AI Fallback untuk ' + needsAI.length + ' soal ═══', 'ai');
-    const exData = [];
+    log('═══ AI untuk ' + needsAI.length + ' soal ═══', 'ai');
     let filled = 0;
 
     try {
       for (let i = 0; i < Q.length; i++) {
         const q = Q[i];
         if (findCorrectOpt(q)) continue;
-        log('AI Q' + (i + 1) + '...', 'ai');
         const opts = q.jawaban.map((j, k) => (k + 1) + '. ' + j.jawaban).join('\n');
         const prompt = 'Q: ' + stripHTML(q.soal) + '\n' + opts + '\n\nReturn JSON: {"answers":[{"i":0,"a":"<EXACT option text>"}]}';
         try {
-          let resp;
-          if (prov === 'xylo') {
-            const r = await fetch(XYLO_BASE + '?prompt=' + encodeURIComponent(prompt), { method: 'GET' });
-            const d = await r.json();
-            resp = d.data?.response || '';
-          } else {
+          let resp = '';
+          if (prov === 'xylo') { const r = await fetch(XYLO_BASE + '?prompt=' + encodeURIComponent(prompt), { method: 'GET' }); const d = await r.json(); resp = d.data?.response || ''; }
+          else {
             const sys = 'MCQ solver. Read carefully.';
             let url, headers = { 'Content-Type': 'application/json' }, body;
             if (prov === 'groq') { url = 'https://api.groq.com/openai/v1/chat/completions'; headers.Authorization = 'Bearer ' + key; body = { model: 'openai/gpt-oss-120b', messages: [{ role: 'system', content: sys }, { role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0.0, max_tokens: 500 }; }
@@ -469,25 +495,20 @@
             const d = await r.json();
             resp = prov === 'cloudflare' ? (d.result?.response || '') : (d.choices?.[0]?.message?.content || '');
           }
-          // Parse
           let answer = '';
           try { const j = JSON.parse(resp.replace(/```json|```/g, '').trim()); answer = j.answers?.[0]?.a || ''; } catch {}
           if (!answer) { const m = resp.match(/[""]([^""]{2,80})[""]/); if (m) answer = m[1]; }
-          // Match
           const matchIdx = q.jawaban.findIndex(j => j.jawaban.toLowerCase() === answer.toLowerCase());
           if (matchIdx >= 0) {
             if (typeof window.goToQuestion === 'function') window.goToQuestion(i);
-            await sleep(300);
+            await sleep(400);
             const radios = qsa('#optionsContainer input[type="radio"]');
-            if (radios[matchIdx]) { simulateClick(radios[matchIdx]); filled++; log('  ✓ ' + answer, 'ok'); exData.push({ idx: i + 1, answer, q: q.soal }); }
-          } else { log('  ✗ no match: ' + answer, 'er'); }
-        } catch (e) { log('  ✗ ' + e.message, 'er'); }
+            if (radios[matchIdx] && clickRadio(radios[matchIdx])) { filled++; log('AI Q' + (i + 1) + ' ✓ ' + answer.slice(0, 40), 'ok'); }
+          } else log('AI Q' + (i + 1) + ' ✗ no match', 'er');
+        } catch (e) { log('AI Q' + (i + 1) + ' ✗ ' + e.message, 'er'); }
         await sleep(400);
       }
-      $('SCD').classList.add('on');
-      $('SCV').textContent = (filled) + ' AI';
-      $('SCDD').textContent = 'Filled via AI';
-      renderExplain(exData);
+      $('SCD').classList.add('on'); $('SCV').textContent = filled + ' AI';
       setSt('done');
     } catch (e) { log('Err: ' + e.message, 'er'); setSt('error'); }
     finally { S.running = false; $('DOT').classList.remove('run'); }
@@ -505,9 +526,6 @@
     });
   }
 
-  // ═══════════════════════════════════════════
-  // INIT
-  // ═══════════════════════════════════════════
   function initHandlers() {
     qsa('.cbt-tab').forEach(b => b.onclick = () => {
       qsa('.cbt-tab').forEach(x => x.classList.remove('on'));
@@ -518,6 +536,7 @@
     $('ST').onclick = () => { S.stealth = true; root.style.display = 'none'; pill.classList.add('on'); };
     $('CL').onclick = () => { root.remove(); pill.remove(); window.__CBT_LOADED__ = false; };
     $('MN').onclick = () => { const m = root.classList.toggle('mini'); $('MN').innerHTML = m ? I.max : I.min; };
+    $('EY').onclick = () => { const i = $('KY'); i.type = i.type === 'password' ? 'text' : 'password'; };
 
     const updateModels = () => {
       const p = $('PR').value; const s = $('MD'); s.innerHTML = '';
@@ -528,7 +547,6 @@
     };
     $('PR').onchange = updateModels;
 
-    // Drag
     const H = $('CBTH'); let dr = false, dx = 0, dy = 0;
     const sDr = (x, y) => { const r = root.getBoundingClientRect(); dr = true; dx = x - r.left; dy = y - r.top; root.style.transform = 'none'; root.style.left = r.left + 'px'; root.style.top = r.top + 'px'; };
     const mDr = (x, y) => { if (!dr) return; const r = root.getBoundingClientRect(); root.style.left = Math.max(0, Math.min(innerWidth - r.width, x - dx)) + 'px'; root.style.top = Math.max(0, Math.min(innerHeight - 40, y - dy)) + 'px'; };
@@ -540,23 +558,23 @@
     document.addEventListener('touchend', () => dr = false);
 
     $('SC').onclick = () => {
+      S.cache = null;
       const Q = detectQuestions();
-      if (!Q) { log('✗ Nggak terdeteksi', 'er'); return; }
+      if (!Q) { log('✗ Detect gagal', 'er'); return; }
       log('═══════════════════════════════', 'in');
       log('Total: ' + Q.length + ' soal', 'ai');
-      log('Source: ' + (window.questions ? 'window.questions' : 'scan'), 'ok');
-      Q.slice(0, 3).forEach((q, i) => {
+      Q.slice(0, 5).forEach((q, i) => {
         const c = findCorrectOpt(q);
-        log('Q' + (i + 1) + ': ' + stripHTML(q.soal).slice(0, 60), 'in');
+        log('Q' + (i + 1) + ': ' + stripHTML(q.soal).slice(0, 55), 'in');
         log('  ✓ ' + (c ? c.jawaban : '(no is_correct)'), c ? 'ok' : 'er');
       });
-      if (Q.length > 3) log('... (' + (Q.length - 3) + ' more)', 'in');
-      $('TIPTEXT').textContent = Q.length + ' soal · embedded answers';
+      if (Q.length > 5) log('... +' + (Q.length - 5), 'in');
+      $('TIPTEXT').textContent = Q.length + ' soal · data loaded';
     };
     $('AI').onclick = aiFallback;
     $('GO').onclick = () => solveAll(false);
     $('GOFINISH').onclick = () => solveAll(true);
-    $('RS').onclick = () => { $('EX').innerHTML = ''; $('SCD').classList.remove('on'); log('Cleared.', 'wn'); };
+    $('RS').onclick = () => { S.cache = null; $('EX').innerHTML = ''; $('SCD').classList.remove('on'); log('Cache reset.', 'wn'); };
 
     $('EXB').onclick = () => { const t = [...$('LG').children].map(c => c.textContent).join('\n'); const b = new Blob([t], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'cbt-log.txt'; a.click(); };
     $('CLB').onclick = () => { $('LG').innerHTML = ''; };
